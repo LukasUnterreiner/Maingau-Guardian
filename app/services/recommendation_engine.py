@@ -20,10 +20,11 @@ from typing import Any
 
 from app.models.runtime_settings import RuntimeSettings
 from app.services.acceptance_model import AcceptanceEstimate, AcceptanceModel
-from app.services.churn_model import SERVICE_DRIVERS
+from app.services.churn_model import DRIVER_DEFS, SERVICE_DRIVERS
 from app.services.clv_engine import CLVEngine, MARKETING_ACTION_TYPES, ScenarioParams, Valuation
 from app.services.customer_service import CustomerService, CustomerState
 from app.services.eligibility_engine import CandidateEligibility, EligibilityEngine
+from app.services.rule_labels import name as channel_name
 
 ENGINE_VERSION = "lighty-1.1.0"
 NO_CONTACT = "NO_CONTACT"
@@ -181,7 +182,8 @@ class RecommendationEngine:
         if d.recommended is None:
             if d.ranked:
                 best = d.ranked[0]
-                parts.append(f"No contact: the best permitted action ({best.product_id} via {best.channel}) has an "
+                parts.append(f"No contact: the best permitted action ({self.products[best.product_id]['product_name']} "
+                             f"via {channel_name(best.channel)}) has an "
                              f"expected dCLV of {best.dclv:+.2f} EUR, which does not beat doing nothing (0.00 EUR).")
             else:
                 parts.append("No contact: no action is permitted for this customer right now.")
@@ -191,7 +193,7 @@ class RecommendationEngine:
             name = self.products[r.product_id]["product_name"]
             if r.valuation.action_type == "service":
                 drivers = [dr.label for dr in s.drivers if dr.code in SERVICE_DRIVERS]
-                parts.append(f"Resolve the service issue first ({name} via {r.channel}).")
+                parts.append(f"Resolve the service issue first ({name} via {channel_name(r.channel)}).")
                 if drivers:
                     parts.append(f"Resolving removes the service churn drivers ({', '.join(drivers)}), lowering churn "
                                  f"from {v.churn_now:.1%} to {v.churn_after_accept:.1%} if successful "
@@ -206,18 +208,20 @@ class RecommendationEngine:
                 if r.eligibility.process == "customer_inquiry_reply":
                     parts.append("The customer asked for a tariff offer (open tariff inquiry), so the reply is "
                                  "handled in the service process, not as unsolicited marketing.")
-                parts.append(f"Offer {name} via {r.channel}: expected dCLV {r.dclv:+.2f} EUR versus no contact "
+                parts.append(f"Offer {name} via {channel_name(r.channel)}: expected dCLV {r.dclv:+.2f} EUR versus no contact "
                              f"(estimated acceptance {r.p_used:.1%}).")
                 if v.added_annual_margin_eur:
                     parts.append(f"Adds {v.added_annual_margin_eur:.0f} EUR annual margin if accepted.")
                 if v.one_off_margin_eur:
                     parts.append(f"One-off margin of {v.one_off_margin_eur:.0f} EUR if bought.")
                 if v.removed_drivers:
-                    parts.append(f"Removes churn driver(s): {', '.join(v.removed_drivers)}.")
+                    parts.append("Removes churn driver(s): "
+                                 + ", ".join(DRIVER_DEFS[c][1] if c in DRIVER_DEFS else c for c in v.removed_drivers) + ".")
             if len(d.ranked) > 1:
                 alt = next((c for c in d.ranked if c.product_id != r.product_id), None)
                 if alt:
-                    parts.append(f"Next best permitted alternative: {alt.product_id} ({alt.dclv:+.2f} EUR).")
+                    parts.append(f"Next best permitted alternative: {self.products[alt.product_id]['product_name']} "
+                                 f"({alt.dclv:+.2f} EUR).")
         sales_blocks = sorted({code for c in d.blocked for code in c.eligibility.exclusion_codes
                                if code.endswith("BLOCKS_MARKETING") or code.startswith(("PROFILING", "CONTACT_"))})
         if sales_blocks:

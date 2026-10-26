@@ -1,7 +1,8 @@
-"""Readable names for the eligibility rule codes (German, English).
+"""Readable names for internal codes (German, English): eligibility rules, channels, churn drivers, statuses.
 
-The codes stay in every structured field (exclusion_reasons, restriction_codes, the decision log). Texts that an
-employee reads, such as copilot answers, warnings and the facts sent to the AI, use these labels instead.
+The codes stay in every structured field (exclusion_reasons, restriction_codes, channel, the decision log). Texts that
+an employee reads, such as the engine's explanation, copilot answers, warnings and the facts sent to the AI, use these
+names instead.
 """
 from __future__ import annotations
 
@@ -29,7 +30,29 @@ LABELS: dict[str, tuple[str, str]] = {
     "NO_CUSTOMER_REQUEST": ("keine Kundenanfrage", "no customer request"),
 }
 
+# lower-case codes that show up in texts: channels, churn drivers, approval status, decision process
+NAMES: dict[str, tuple[str, str]] = {
+    "newsletter_email": ("Newsletter-E-Mail", "newsletter e-mail"),
+    "portal_popup": ("Portal-Pop-up", "portal pop-up"),
+    "app_push": ("App-Push", "app push"),
+    "outbound_call": ("Anruf", "outbound call"),
+    "service_email": ("Service-E-Mail", "service e-mail"),
+    "service_call": ("Service-Anruf", "service call"),
+    "price_guarantee_ends_90d": ("Preisgarantie endet in 90 Tagen", "price guarantee ends within 90 days"),
+    "open_complaint": ("offene Beschwerde", "open complaint"),
+    "tickets_12m_ge2": ("zwei oder mehr Tickets in 12 Monaten", "two or more tickets in 12 months"),
+    "csat_le2": ("letzte Bewertung 1 oder 2", "last CSAT rating 1 or 2"),
+    "dunning_ge2": ("Mahnstufe 2 oder höher", "dunning level 2 or higher"),
+    "failed_charges_30d_ge3": ("drei oder mehr fehlgeschlagene Ladevorgänge in 30 Tagen",
+                               "three or more failed charging sessions in 30 days"),
+    "hems_user": ("HEMS-Nutzer", "HEMS user"),
+    "pending_approval": ("wartet auf Freigabe", "pending approval"),
+    "not_required": ("keine Freigabe nötig", "no approval needed"),
+    "customer_inquiry_reply": ("Antwort auf eine Kundenanfrage", "reply to a customer inquiry"),
+}
+
 _CODE = re.compile(r"\b[A-Z]+(?:_[A-Z]+)+\b")
+_NAME = re.compile(r"\b[a-z]+(?:_[a-z0-9]+)+\b")
 
 
 def label(code: str, lang: str) -> str:
@@ -42,6 +65,15 @@ def labels(codes: list[str], lang: str) -> str:
     return ", ".join(dict.fromkeys(label(c, lang) for c in codes))
 
 
+def name(code: str | None, lang: str = "en") -> str:
+    """Channel, churn driver or status in words; unknown codes come back unchanged."""
+    if code not in NAMES:
+        return code or ""
+    de, en = NAMES[code]
+    return de if lang == "de" else en
+
+
 def humanize(text: str, lang: str) -> str:
-    """Replace known rule codes inside a text; anything else that looks like a code (e.g. NO_CONTACT) is kept."""
-    return _CODE.sub(lambda m: label(m.group(0), lang) if m.group(0) in LABELS else m.group(0), text)
+    """Replace known codes inside a text; anything else that looks like a code (e.g. NO_CONTACT) is kept."""
+    text = _CODE.sub(lambda m: label(m.group(0), lang) if m.group(0) in LABELS else m.group(0), text)
+    return _NAME.sub(lambda m: name(m.group(0), lang), text)

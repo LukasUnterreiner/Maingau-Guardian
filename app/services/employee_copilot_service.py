@@ -691,6 +691,7 @@ class EmployeeCopilotService:
             response = composed.text()
             if composed.notes:
                 response += "\n" + "\n".join(f"- {n}" for n in composed.notes)
+            response = humanize(response, lang)
             used = list(dict.fromkeys(composed.fact_ids + nba_ids))
         message = composed.draft or composed.opening
         if message:
