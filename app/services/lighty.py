@@ -253,7 +253,7 @@ class Lighty:
     def marketing_recommendations(self, page: int, page_size: int, action_type: str | None, channel: str | None,
                                   business_line: str | None, approval_status: str | None,
                                   include_no_contact: bool) -> dict[str, Any]:
-        statuses = self.log.statuses()
+        statuses, reviews = self.log.statuses(), self.log.reviews()
         rows = []
         for d in self.portfolio():
             r = d.recommended
@@ -279,6 +279,8 @@ class Lighty:
                 "acceptance_probability": round(r.p_used, 4) if r else None,
                 "required_service_workflow": d.required_service_workflow, "approval_status": status,
                 "segment": segment_of(d),
+                "reviewed_by": reviews.get(d.decision_id, (None, None))[0],
+                "reviewed_at": reviews.get(d.decision_id, (None, None))[1],
             })
         rows.sort(key=lambda x: (-x["expected_dclv_eur"], x["customer_id"]))
         total = len(rows)

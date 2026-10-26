@@ -207,6 +207,8 @@ class MarketingRecommendationItem(BaseModel):
     required_service_workflow: bool
     approval_status: str
     segment: str
+    reviewed_by: str | None = None       # who approved or rejected it (null while pending)
+    reviewed_at: str | None = None       # when, ISO 8601 UTC
 
 
 class MarketingRecommendationList(BaseModel):

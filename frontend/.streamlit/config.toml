@@ -14,7 +14,7 @@ greenColor = "#008153"
 redColor = "#E20707"
 font = "'Plus Jakarta Sans':https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&display=swap"
 baseRadius = "12px"
-buttonRadius = "12px"
+buttonRadius = "999px"
 headingFontWeights = 700
 metricValueFontWeight = 300
 showWidgetBorder = true

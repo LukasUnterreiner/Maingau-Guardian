@@ -19,10 +19,11 @@ def label(cid: str) -> str:
 
 
 head, pick = st.columns([3, 2], vertical_alignment="bottom")
-head.html('<h1 class="lt-h1">Customers</h1>')
 cid = pick.selectbox("Customer", ids, index=ids.index(current), format_func=label, key="customer-picker")
 st.session_state["customer_id"] = cid
 c = by_id[cid]
+with head:
+    ui.page_head("Customers", cid)
 
 tone = c.get("tonality") or "sie"
 facts = [f'<span class="lt-tone{" lt-tone--du" if tone == "du" else ""}"><span class="lt-tone__value">'
@@ -78,9 +79,8 @@ with right, st.container(key="ask-lighty"):
     elif banner := ui.sales_banner(chat["turns"][-1][1]):
         ui.html_block(banner)
     for n, (question, resp) in enumerate(chat["turns"]):
-        with st.container(key=f"turn-{'next-' if n else ''}{cid}-{n}"):   # "next" turns get a line above
-            ui.html_block(ui.user_message(question))
-            ui.html_block(ui.lighty_answer(resp))
+        with st.container(key=f"turn-{'next-' if n else ''}{cid}-{n}", gap="medium"):   # "next" turns: line above
+            ui.html_block(ui.turn(question, resp))
             ui.suggestion(resp, f"{cid}-{n}")
     if error := st.session_state.pop("chat-error", None):
         st.error(error)

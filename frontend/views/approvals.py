@@ -7,8 +7,8 @@ import ui
 STATUS_FILTER = {"Pending": "pending_approval", "Approved": "approved", "Rejected": "rejected"}
 
 head, pill = st.columns([3, 1], vertical_alignment="bottom")
-head.html('<h1 class="lt-h1">Approval queue</h1>'
-          '<p class="lt-body">Every customer contact needs a person\'s yes. Select a row to review it.</p>')
+with head:
+    ui.page_head("Approval queue", "Every contact needs a person's yes.", "Select a row to review it.")
 
 f1, f2, f3 = st.columns([2, 2, 2], vertical_alignment="bottom")
 status_label = f1.segmented_control("Status", list(STATUS_FILTER), default="Pending", key="queue-status") or "Pending"

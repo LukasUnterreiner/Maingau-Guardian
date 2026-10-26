@@ -108,6 +108,11 @@ def test_approval_flow(client):
     assert r.status_code == 200 and r.json()["approval_status"] == "rejected"
     assert client.post(f"/api/decisions/{did}/approve").status_code == 409
     assert client.get("/api/customers/MG-100004/recommendations").json()["approval_status"] == "rejected"
+    item = next(i for i in client.get("/api/marketing/recommendations",
+                                      params={"approval_status": "rejected"}).json()["items"] if i["decision_id"] == did)
+    assert item["reviewed_by"] == "qa" and item["reviewed_at"].endswith("+00:00")
+    pending = client.get("/api/marketing/recommendations", params={"page_size": 5}).json()["items"]
+    assert all(i["reviewed_by"] is None and i["reviewed_at"] is None for i in pending if i["decision_id"] != did)
 
 
 def test_no_contact_cannot_be_approved_or_messaged(client, portfolio):

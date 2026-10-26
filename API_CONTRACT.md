@@ -450,11 +450,15 @@ Query: `page`, `page_size` (1–500, default 50), `action_type`, `channel`, `bus
     { "customer_id": "MG-100315", "decision_id": "DEC-82dd59dce7bdc3c5", "recommended_action": "P-SV-01",
       "recommended_action_name": "Service-Only / No offer", "action_type": "service", "business_line": "service",
       "channel": "service_email", "tonality": "sie", "current_clv_eur": 898.31, "expected_dclv_eur": 223.09,
-      "acceptance_probability": 0.879, "required_service_workflow": false, "approval_status": "pending_approval", "segment": "energy+mobile" }
+      "acceptance_probability": 0.879, "required_service_workflow": false, "approval_status": "pending_approval", "segment": "energy+mobile",
+      "reviewed_by": null, "reviewed_at": null }
   ],
   "page": 1, "page_size": 2, "total": 413, "total_pages": 207
 }
 ```
+
+`reviewed_by` / `reviewed_at` (ISO 8601, UTC) are set once a person approved or rejected the decision; the web app's
+activity feed lists them (`approval_status=approved` or `rejected`).
 
 ### 4.8 `GET /api/marketing/settings` and `PUT /api/marketing/settings`
 

@@ -81,8 +81,11 @@ development environment (the gateway was not reachable from there), so test it o
 A Streamlit app in the team's Lighty "Daylight" design (`frontend/theme/`, unchanged from the design team) that shows
 live data from the backend:
 
-* **Cockpit**: KPI tiles from `/api/marketing/overview`, the most valuable decision waiting for review (with Approve /
-  Reject), today's decision mix and contacts by channel.
+* **Cockpit** (soft-card layout): KPI tiles with small bar charts of real distributions (pending decisions by type,
+  customers by churn band, ΔCLV by CLV tier, Lighty vs. sales-first), customer cards for the most valuable customers
+  likely to cancel and for the top decisions waiting for review (churn risk, value at stake, Lighty's next step,
+  Details / Reject / Approve), an activity feed of the latest approvals and rejections (`reviewed_by`,
+  `reviewed_at`), today's decision mix and contacts by channel.
 * **Churn risk**: the customers most likely to cancel (top quarter by 12-month churn risk), why (the churn
   drivers), the customer value at stake if they leave (their CLV) and the CLV already lost to service problems
   (`clv_service_impact_eur` from the data). Each customer page starts with the same churn card, including what
@@ -111,8 +114,9 @@ LIGHTY_API_URL=http://localhost:8000 streamlit run app.py      # http://localhos
 On wsvm38 that is **`http://130.83.85.181:38443`** (plain HTTP on that port, type `http://`).
 
 Tested by hand in Chromium against the local backend: sign-in (wrong and right token), cockpit, approving a
-decision (flash message, pending count goes down), queue filters, row selection, churn-risk page and card, customer page, two chat turns
-and a phone-width view. There are no automated tests for the web app.
+decision (flash message, pending count goes down), approving and rejecting from the cockpit cards (activity feed
+updates), queue filters, row selection, churn-risk page and card, customer page, two chat turns and a phone-width
+view. There are no automated tests for the web app.
 
 ## Tests
 

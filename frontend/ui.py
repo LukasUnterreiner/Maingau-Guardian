@@ -43,6 +43,7 @@ ICON = {
     "info": '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
     "door": '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
     "euro": '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
+    "user": '<circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/>',
     "users": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
 }
 MAX_BLOCKED = 4   # blocked options shown per customer, highest value first
@@ -176,21 +177,157 @@ def review_buttons(rec: dict, key: str, *, open_customer: bool = False) -> None:
             st.session_state["customer_id"] = rec["customer_id"]
             st.switch_page("views/customer.py")
     if approve or reject:
-        try:
-            api.review(_token(), rec["decision_id"], approve, reviewer=st.session_state["me"]["employee_id"])
-        except api.LightyError as exc:
-            st.session_state["flash"] = ("error", f"Not saved: {exc.message}")
-        else:
-            verb = "approved" if approve else "rejected"
-            st.session_state["flash"] = ("success", f"Decision for {rec['customer_id']} {verb}.")
-        st.cache_data.clear()
-        st.rerun()
+        save_review(rec, approve)
+
+
+def save_review(rec: dict, approve: bool) -> None:
+    try:
+        api.review(_token(), rec["decision_id"], approve, reviewer=st.session_state["me"]["employee_id"])
+    except api.LightyError as exc:
+        st.session_state["flash"] = ("error", f"Not saved: {exc.message}")
+    else:
+        verb = "approved" if approve else "rejected"
+        st.session_state["flash"] = ("success", f"Decision for {rec['customer_id']} {verb}.")
+    st.cache_data.clear()
+    st.rerun()
 
 
 def show_flash() -> None:
     if flash := st.session_state.pop("flash", None):
         kind, text = flash
         (st.success if kind == "success" else st.error)(text)
+
+
+# ------------------------------------------------------------------ page parts (soft-card layout)
+def page_head(eyebrow: str, title: str, subtitle: str = "") -> None:
+    html_block(f'<div class="lt-pagehead"><span class="lt-eyebrow">{esc(eyebrow)}</span>'
+               f'<h1 class="lt-title">{esc(title)}</h1>'
+               + (f'<p class="lt-subtitle">{esc(subtitle)}</p>' if subtitle else "") + '</div>')
+
+
+def minibars(values: list[float], color: str, title: str) -> str:
+    """Small bar chart in a tile. Real numbers only, scaled to the largest; the tooltip says what they are."""
+    top = max([v for v in values if v > 0] + [1e-9])
+    return (f'<div class="lt-minibars" title="{esc(title)}" aria-hidden="true">'
+            + "".join(f'<span style="height: {max(v / top * 100, 6) if v > 0 else 4:.0f}%; background: {color};"></span>'
+                      for v in values) + '</div>')
+
+
+def tile(icon: str, label: str, value: str, note: str, color: str, bars: str = "") -> str:
+    return (f'<div class="lt-tile"><div class="lt-tile__head"><span class="lt-tile__icon" style="color: {color};">'
+            f'{svg(icon)}</span><span>{label}</span></div>'
+            f'<div class="lt-tile__body"><span class="lt-tile__value">{value}</span>{bars}</div>'
+            f'<span class="lt-tile__note">{note}</span></div>')
+
+
+def tiles(*parts: str) -> None:
+    html_block(f'<div class="lt-tiles">{"".join(parts)}</div>')
+
+
+def churn_histogram(index: list[dict]) -> list[float]:
+    """Customers per 10-point churn band: 0–9 %, 10–19 %, …, 60 % and more."""
+    bins = [0.0] * 7
+    for c in index:
+        bins[min(int((c.get("churn_probability") or 0) * 10), 6)] += 1
+    return bins
+
+
+def section(title: str, count: int | None, dot: str, key: str, button: str | None = None) -> bool:
+    """A section title with a coloured dot and a count, and an optional "View all" button on the right."""
+    with st.container(horizontal=True, vertical_alignment="center", key=f"sec-{key}"):
+        st.html(f'<div class="lt-section"><span class="lt-section__dot" style="background: {dot};"></span>'
+                f'<h2 class="lt-section__title">{esc(title)}</h2>'
+                + (f'<span class="lt-section__count">{count:,}</span>' if count is not None else "") + '</div>')
+        if button:
+            st.space("stretch")
+            return st.button(button, key=f"sec-btn-{key}", icon=":material/arrow_forward:", icon_position="right")
+    return False
+
+
+RISK_COLOR = {"High": "var(--lt-loss)", "Medium": "var(--lt-resolve)", "Low": "var(--lt-gain)"}
+RISK_TINT = {"High": "var(--lt-loss-tint)", "Medium": "var(--lt-resolve-tint)", "Low": "var(--lt-gain-tint)"}
+
+
+def customer_card(c: dict, rec: dict, levels: dict, key: str) -> None:
+    """One customer as a card: who, churn risk, value at stake, Lighty's next step, and approve / reject."""
+    churn = c.get("churn_probability") or 0
+    level = risk_level(churn, levels)
+    color = RISK_COLOR[level]
+    lines = ", ".join(x.replace("_", "-").capitalize() for x in c.get("business_lines") or [])
+    status = ("Cancellation received", "var(--lt-loss)") if c.get("cancellation_pending") else (f"{level} risk", color)
+    filled = max(1, round(churn * 10))
+    segments = '<span class="on"></span>' * filled + "<span></span>" * (10 - filled)
+    why = "Cancellation received" if c.get("cancellation_pending") else \
+        ", ".join(c.get("churn_drivers") or []) or "Base risk of the contracts"
+    gain = rec.get("expected_dclv_eur") or 0
+    if rec.get("action_type") == "no_contact":
+        step = '<strong>Leave alone today</strong>'
+    else:
+        step = (f'<strong>{esc(CHANNEL.get(rec.get("channel"), rec.get("channel")))}</strong>'
+                f'{kind_chip(rec.get("action_type"), rec.get("recommended_action_name"))}')
+    with st.container(key=f"ccard-{key}"):
+        html_block(
+            '<div class="lt-ccard">'
+            '<div class="lt-ccard__head">'
+            f'<div class="lt-avatar" style="--av: {RISK_TINT[level]}; --av-ink: {color};">{svg("user")}'
+            f'<span class="lt-avatar__badge">{esc((c.get("tonality") or "sie").capitalize())}</span></div>'
+            f'<div class="lt-ccard__who"><span class="lt-ccard__name">{esc(c["customer_id"])}</span>'
+            f'<span class="lt-caption">{esc(c.get("city"))} · {esc(lines)}</span></div>'
+            f'<span class="lt-status" style="--dot: {status[1]};">{esc(status[0])}</span></div>'
+            '<div class="lt-ccard__risk">'
+            f'<div class="lt-row"><span class="lt-caption">Churn risk · 12 months</span><span class="lt-spacer"></span>'
+            f'<span class="lt-caption">At stake <strong class="lt-ccard__num">{esc(eur(c.get("current_clv_eur"), decimals=0))}'
+            '</strong></span></div>'
+            f'<div class="lt-segbar" style="--seg: {color};" title="{esc(pct(churn))}">{segments}</div>'
+            f'<div class="lt-row" style="gap: 8px;"><strong class="lt-ccard__num">{esc(pct(churn))}</strong>'
+            f'<span class="lt-caption lt-ccard__why">{esc(why)}</span></div></div>'
+            '<div class="lt-ccard__task"><span class="lt-caption">Lighty recommends</span>'
+            f'<div class="lt-row" style="gap: 8px;">{step}<span class="lt-spacer"></span>'
+            + (f'<span class="lt-delta--gain">{esc(eur(gain, sign=True))}</span>' if gain > 0 else "")
+            + '</div></div></div>')
+        with st.container(horizontal=True, vertical_alignment="center", key=f"cact-{key}"):
+            if st.button("Details", type="tertiary", key=f"open-{key}"):
+                st.session_state["customer_id"] = c["customer_id"]
+                st.switch_page("views/customer.py")
+            st.space("stretch")
+            if rec.get("approval_status") == "pending_approval":
+                if st.button("Reject", key=f"reject-{key}"):
+                    save_review(rec, False)
+                if st.button("Approve", type="primary", icon=":material/check:", key=f"approve-{key}"):
+                    save_review(rec, True)
+            else:
+                st.html(f'<span class="lt-caption">{esc(STATUS.get(rec.get("approval_status"), ""))}</span>')
+
+
+def _local_time(iso: str | None) -> str:
+    if not iso:
+        return ""
+    when = datetime.fromisoformat(iso).astimezone(ZoneInfo("Europe/Berlin"))
+    return f"{when:%H:%M}" if when.date() == datetime.now(ZoneInfo("Europe/Berlin")).date() else f"{when.day} {when:%b}"
+
+
+def activity_feed(reviewed: list[dict], limit: int = 7) -> str:
+    """The latest approvals and rejections, newest first."""
+    rows = sorted(reviewed, key=lambda d: d.get("reviewed_at") or "", reverse=True)[:limit]
+    if not rows:
+        items = ('<p class="lt-caption" style="margin: 0;">No reviews yet. Every decision you approve or reject '
+                 'shows up here.</p>')
+    else:
+        items = "".join(
+            '<div class="lt-feed__item">'
+            f'<span class="lt-feed__dot" style="background: var(--lt-dot-{"approved" if d["approval_status"] == "approved" else "rejected"});"></span>'
+            '<div class="lt-feed__text">'
+            f'<div><span class="lt-mention">@{esc(d.get("reviewed_by") or "unknown")}</span> '
+            f'{"approved" if d["approval_status"] == "approved" else "rejected"}</div>'
+            f'<div class="lt-row" style="gap: 6px;">{kind_chip(d.get("action_type"))}'
+            f'<span class="lt-tagid">{esc(d["customer_id"])}</span></div></div>'
+            f'<span class="lt-caption">{esc(_local_time(d.get("reviewed_at")))}</span></div>'
+            for d in rows)
+    return ('<section class="lt-softcard"><div class="lt-row" style="gap: 10px; flex-wrap: nowrap;">'
+            f'<span class="lt-tile__icon" style="color: var(--lt-primary);">{svg("inbox")}</span>'
+            '<div class="lt-stack" style="gap: 0;"><h2 class="lt-section__title" style="font-size: 18px;">Activity</h2>'
+            '<span class="lt-caption">latest approvals and rejections</span></div></div>'
+            f'<div class="lt-feed">{items}</div></section>')
 
 
 # ------------------------------------------------------------------ cards
@@ -345,14 +482,19 @@ def lighty_answer(resp: dict) -> str:
                   f'<span></span></span><span class="lt-small">{esc(level.capitalize())}</span></div>') if level else ""
     other = [w for w in resp.get("warnings", []) if w.get("code") != "sales_restricted"]
     notes = "".join(f'<div class="lt-caption">{esc(w.get("message"))}</div>' for w in other)
-    out = [f'<div class="lt-msg-lighty"><div class="lt-row" style="gap: 8px;"><strong>Lighty</strong>{chip}</div>'
-           f'{body}</div>']
+    out = [f'<div class="lt-msg-lighty"><div class="lt-row" style="gap: 8px;"><span class="lt-answer__mark">{SPARK}</span>'
+           f'<strong>Lighty</strong>{chip}</div>{body}</div>']
     if chips:
         out.append('<div class="lt-stack" style="gap: 6px;"><span class="lt-label">Based on</span>'
                    f'<div class="lt-row" style="gap: 6px;">{"".join(chips)}</div></div>')
     if confidence or notes:
         out.append(f'<div class="lt-stack" style="gap: 6px;">{confidence}{notes}</div>')
-    return f'<div class="lt-stack" style="gap: 16px;">{"".join(out)}</div>'
+    return f'<div class="lt-answer">{"".join(out)}</div>'
+
+
+def turn(question: str, resp: dict) -> str:
+    """One question and its answer as one block, so the spacing between them is fixed."""
+    return f'<div class="lt-turn">{user_message(question)}{lighty_answer(resp)}</div>'
 
 
 def suggestion(resp: dict, key: str) -> None:
@@ -389,21 +531,22 @@ def share_below(churn: float, levels: dict) -> float:
 def risk_tiles(at_risk: list[dict], index: list[dict], levels: dict) -> str:
     cancelled = [c for c in index if c.get("cancellation_pending")]
     lost = sum(c.get("clv_service_impact_reported_eur") or 0 for c in index)
-
-    def tile(color, icon, label, value, note):
-        return (f'<div class="lt-kpi lt-kpi--{color}"><div class="lt-kpi__head"><span class="lt-kpi__icon">{svg(icon)}'
-                f'</span>{label}</div><span class="lt-kpi__value">{value}</span><div class="lt-kpi__note">{note}</div></div>')
-
-    return ('<div class="lt-grid" style="--lt-grid-min: 230px;">'
-            + tile("orange", "users", "Likely to cancel", esc(f"{len(at_risk):,}"),
-                   f"customers with ≥ {esc(pct(levels['high']))} churn risk in 12 months")
-            + tile("amber", "euro", "Customer value at stake",
-                   esc(eur(sum(c.get("current_clv_eur") or 0 for c in at_risk), decimals=0)),
-                   "lost if they cancel (their CLV) · Estimate")
-            + tile("blue", "wrench", "Already lost to service problems", esc(eur(lost, decimals=0)),
-                   "CLV reduced by service cases, all customers · from the data")
-            + tile("teal", "door", "Cancellations received", esc(f"{len(cancelled):,}"),
-                   "contract cancelled, churn risk 95%")
+    by_level = {lvl: sum(c.get("current_clv_eur") or 0 for c in index
+                         if risk_level(c.get("churn_probability") or 0, levels) == lvl) for lvl in ("Low", "Medium", "High")}
+    return ('<div class="lt-tiles">'
+            + tile("users", "Likely to cancel", esc(f"{len(at_risk):,}"),
+                   f"customers with ≥ {esc(pct(levels['high']))} churn risk in 12 months", "var(--lt-resolve)",
+                   minibars(churn_histogram(index), "var(--lt-resolve)",
+                            "All customers by churn risk: 0–9 %, 10–19 %, … 60 % and more"))
+            + tile("euro", "Customer value at stake", esc(eur(sum(c.get("current_clv_eur") or 0 for c in at_risk), decimals=0)),
+                   "lost if they cancel (their CLV) · Estimate", "var(--lt-loss)",
+                   minibars(list(by_level.values()), "var(--lt-loss)",
+                            "Customer value by risk level: " + ", ".join(f"{k} {eur(v, decimals=0)}"
+                                                                       for k, v in by_level.items())))
+            + tile("wrench", "Already lost to service problems", esc(eur(lost, decimals=0)),
+                   "CLV reduced by service cases, all customers · from the data", "var(--lt-primary)")
+            + tile("door", "Cancellations received", esc(f"{len(cancelled):,}"),
+                   "contract cancelled, churn risk 95%", "var(--lt-brand)")
             + "</div>")
 
 

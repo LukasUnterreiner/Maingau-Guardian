@@ -101,6 +101,13 @@ class DecisionLog:
             rows = self._conn.execute("SELECT decision_id, approval_status FROM decisions").fetchall()
         return {r["decision_id"]: r["approval_status"] for r in rows}
 
+    def reviews(self) -> dict[str, tuple[str | None, str]]:
+        """decision_id -> (reviewer, reviewed_at) for every decision a person approved or rejected."""
+        with self._lock:
+            rows = self._conn.execute("SELECT decision_id, reviewer, reviewed_at FROM decisions"
+                                      " WHERE reviewed_at IS NOT NULL").fetchall()
+        return {r["decision_id"]: (r["reviewer"], r["reviewed_at"]) for r in rows}
+
     def set_status(self, decision_id: str, status: str, reviewer: str | None, note: str | None) -> None:
         assert status in APPROVAL_STATES
         with self._lock, self._conn:

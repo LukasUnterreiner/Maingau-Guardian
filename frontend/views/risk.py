@@ -9,11 +9,9 @@ levels = ui.risk_levels(index)
 at_risk = [c for c in index if (c.get("churn_probability") or 0) >= levels["high"]]
 at_stake = sum(c.get("current_clv_eur") or 0 for c in at_risk)
 
-ui.html_block('<div class="lt-stack" style="gap: 8px;">'
-              '<span class="lt-small" style="color: var(--lt-primary); font-weight: 600;">Churn risk · next 12 months</span>'
-              f'<h1 class="lt-display">{len(at_risk):,} customers are likely to cancel.</h1>'
-              f'<p class="lt-body">If they leave, {ui.esc(ui.eur(at_stake, decimals=0))} of customer value goes with them. '
-              'Lighty shows why each one is at risk and what the best next step is worth.</p></div>')
+ui.page_head("Churn risk · next 12 months", f"{len(at_risk):,} customers are likely to cancel.",
+             f"If they leave, {ui.eur(at_stake, decimals=0)} of customer value goes with them. Lighty shows why each "
+             "one is at risk and what the best next step is worth.")
 ui.html_block(ui.risk_tiles(at_risk, index, levels))
 
 f1, f2, _ = st.columns([2, 2, 2], vertical_alignment="bottom")
