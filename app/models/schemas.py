@@ -240,6 +240,40 @@ class MarketingOverview(BaseModel):
     settings_version: int
 
 
+class RegionStats(BaseModel):
+    customers: int
+    likely_to_cancel: int
+    likely_to_cancel_share: float | None
+    avg_churn_probability: float | None
+    clv_eur: float
+    clv_at_stake_eur: float
+    service_issues: int
+    open_complaints: int
+    cancellations_pending: int
+    contacts_recommended: int
+    pending_approvals: int
+    expected_dclv_eur: float
+
+
+class Region(RegionStats):
+    id: str
+    name: str
+    state_code: str | None
+    latitude: float | None = None
+    longitude: float | None = None
+
+
+class RegionsResponse(BaseModel):
+    level: Literal["state", "city"]
+    state: str | None
+    as_of: str
+    high_risk_threshold: float
+    regions: list[Region]
+    totals: RegionStats
+    unassigned_customers: int
+    note: str
+
+
 class SettingsResponse(BaseModel):
     version: int
     settings: dict[str, Any]

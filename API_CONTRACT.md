@@ -64,6 +64,7 @@ All errors share one shape:
 | POST | `/api/customers/{customer_id}/simulate` | Counterfactual simulation |
 | GET | `/api/marketing/overview` | Dashboard aggregates incl. Projected Protected Customer Value |
 | GET | `/api/marketing/recommendations` | Paginated list of decisions across all customers |
+| GET | `/api/marketing/regions` | Customers, churn risk, value and workload per state or city (§4.19) |
 | GET | `/api/marketing/settings` | Current runtime settings |
 | PUT | `/api/marketing/settings` | Update runtime settings (validated, cannot loosen hard rules) |
 | POST | `/api/decisions/{decision_id}/approve` | Human approval |
@@ -791,6 +792,40 @@ Starter questions that fit the customer's situation (for chips above the input f
 { "employee_id": "agent-7", "role": "service_agent", "auth_mode": "dev", "permissions": ["copilot", "customer_context", "free_text"] }
 ```
 
+### 4.19 `GET /api/marketing/regions`
+
+Totals per state or per city for the web app's **Regions** map. Query: `level` (`state`, default, or `city`) and
+optionally `state` (an ISO 3166-2 code such as `DE-HE`, or `unassigned`) to keep only one state. Sorted by
+`customers` desc. Same employee protection as the other marketing endpoints.
+
+The dataset has a city (`customer_master.city`) but no state. `data/reference/city_regions.csv` maps each of the
+13 cities to its state and to a map position (city centre, rounded). A city that is missing from that file is counted
+under `id: "unassigned"` and in `unassigned_customers`, never dropped. **Reporting only:** the region is never used
+for a recommendation.
+
+```json
+{
+  "level": "city", "state": "DE-HE", "as_of": "2026-10-02 02:03:52", "high_risk_threshold": 0.24,
+  "regions": [
+    { "id": "Darmstadt", "name": "Darmstadt", "state_code": "DE-HE", "latitude": 49.8728, "longitude": 8.6512,
+      "customers": 64, "likely_to_cancel": 20, "likely_to_cancel_share": 0.3125, "avg_churn_probability": 0.1956,
+      "clv_eur": 36402.64, "clv_at_stake_eur": 5881.15, "service_issues": 21, "open_complaints": 4,
+      "cancellations_pending": 0, "contacts_recommended": 37, "pending_approvals": 37, "expected_dclv_eur": 1327.38 }
+  ],
+  "totals": { "customers": 311, "likely_to_cancel": 83, "clv_at_stake_eur": 25463.11, "…": 0 },
+  "unassigned_customers": 0,
+  "note": "Reporting only: the region is never used for a recommendation. …"
+}
+```
+
+* State rows have `id` = the ISO code (`DE-HE`), `name` = the state's name and no position.
+* `likely_to_cancel` = customers in the top quarter of the whole portfolio by churn risk
+  (`churn_probability` ≥ `high_risk_threshold`), the same rule as the web app's Churn risk page;
+  `clv_at_stake_eur` is their current CLV.
+* `pending_approvals` uses the decision log (approved or rejected decisions drop out); `contacts_recommended`
+  counts every customer with a recommended contact.
+* The sums over all states equal the cockpit: 750 customers, 204 likely to cancel, €64,426 at stake.
+
 Copilot errors (same error shape as everywhere):
 
 ```json
@@ -921,4 +956,5 @@ quoted with their label), and do not show facts of another customer in the same 
 | AI settings | New `AI_CHAT_PATH`, `AI_AUTH_HEADER`, `AI_AUTH_SCHEME`, `AI_MAX_TOKENS`; `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` unchanged. | Defaults match v1. |
 | SQLite file | Default `SQLITE_FILE` is `lighty.sqlite3` (was `guardian.sqlite3`). | Set `SQLITE_FILE=guardian.sqlite3` to keep using the old file. |
 | Churn fields | Customer list items add `churn_drivers`, `clv_service_impact_reported_eur`, `cancellation_pending`; recommendations add `churn_now`, `churn_after_accept`, `churn_after_reject`. | Additive. |
+| Regions | New `GET /api/marketing/regions` (§4.19) and `data/reference/city_regions.csv` (city to state and map position). | Additive. |
 | Docker | Service, image, container and volume are named `lighty`. Ports (`80:8000`) and `/srv` mounts are unchanged. | Stop the old `maingau-guardian` container before starting `lighty` (both use port 80). |

@@ -29,6 +29,8 @@ borderColor = "#123A72"
 
 [server]
 headless = true
+# serves static/ at /app/static/: the map outlines and Plotly's base map file (no request to cdn.plot.ly)
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false

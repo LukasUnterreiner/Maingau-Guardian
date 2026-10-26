@@ -137,6 +137,11 @@ def customer_index(token: str) -> list[dict]:
 
 
 @st.cache_data(ttl=60, show_spinner=False)
+def regions(token: str, level: str) -> dict:
+    return api.regions(token, level=level)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
 def customer(token: str, customer_id: str) -> dict:
     return api.customer(token, customer_id)
 

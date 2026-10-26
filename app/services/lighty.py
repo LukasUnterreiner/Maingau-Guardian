@@ -28,6 +28,8 @@ from app.services.eligibility_engine import EligibilityEngine
 from app.services.employee_copilot_service import EmployeeCopilotService
 from app.services.llm_client import ChatModel
 from app.services.recommendation_engine import Decision, POverrides, RecommendationEngine, service_category
+from app.services.region_service import high_risk_threshold, load_places
+from app.services.region_service import regions as add_up_regions
 
 log = logging.getLogger("lighty")
 
@@ -62,6 +64,7 @@ class Lighty:
                                               AIPromptService(self.ai, settings.copilot_history_messages))
         self._lock = threading.RLock()
         self._portfolio: list[Decision] | None = None
+        self.places = load_places(settings.city_regions_path)
         self._build_engines()
         self.default_as_of = self.customers.resolve_as_of(None, settings.evaluation_as_of)
 
@@ -287,6 +290,13 @@ class Lighty:
         start = (page - 1) * page_size
         return {"items": rows[start:start + page_size], "page": page, "page_size": page_size, "total": total,
                 "total_pages": (total + page_size - 1) // page_size}
+
+    def regions(self, level: str, state: str | None) -> dict[str, Any]:
+        portfolio = self.portfolio()
+        threshold = high_risk_threshold(d.state.churn_now for d in portfolio)
+        out = add_up_regions(portfolio, self.log.statuses(), self.places, level, state, threshold)
+        out["as_of"] = self.default_as_of.isoformat(sep=" ")
+        return out
 
     def overview(self) -> dict[str, Any]:
         out = self.analytics.overview(self.portfolio(), self.log.statuses(), self.settings.simulation.baseline_policy)

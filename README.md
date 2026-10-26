@@ -90,6 +90,11 @@ live data from the backend:
   drivers), the customer value at stake if they leave (their CLV) and the CLV already lost to service problems
   (`clv_service_impact_eur` from the data). Each customer page starts with the same churn card, including what
   Lighty's recommended action does to the risk.
+* **Regions**: a map of Germany (16 state outlines from Natural Earth, served by the app itself, no map tiles and no
+  request to outside servers). States are coloured by a rate, cities get a bubble sized by an amount; four views
+  (Churn, Service, Opportunity, Workload). Click a state to zoom in, click a city to narrow the customer cards to it;
+  the selection is in the page address (`?region=DE-HE&city=Darmstadt`). Data from `GET /api/marketing/regions`.
+  Reporting only: the region is never used for a recommendation.
 * **Approval queue**: all decisions by status (pending, approved, rejected) with filters; select a row to see the
   full decision and approve or reject it.
 * **Customers**: Lighty's decision for one customer, the options it compared (blocked ones greyed out with their
@@ -115,8 +120,8 @@ On wsvm38 that is **`http://130.83.85.181:38443`** (plain HTTP on that port, typ
 
 Tested by hand in Chromium against the local backend: sign-in (wrong and right token), cockpit, approving a
 decision (flash message, pending count goes down), approving and rejecting from the cockpit cards (activity feed
-updates), queue filters, row selection, churn-risk page and card, customer page, two chat turns and a phone-width
-view. There are no automated tests for the web app.
+updates), queue filters, row selection, churn-risk page and card, customer page, two chat turns, the Regions map
+(click on Hessen, click on Darmstadt, the four views, a shared link, phone width) and a phone-width view. There are no automated tests for the web app.
 
 ## Tests
 
@@ -124,7 +129,7 @@ view. There are no automated tests for the web app.
 pytest -q
 ```
 
-99 tests:
+105 tests:
 
 * Engine (44): the 12 mandatory scenarios of the brief, the MG‑100004 service case, a dataset-wide check that the
   CLV formula and all churn drivers reproduce `customer_value`, API contract/error tests and an unreachable-AI test.
@@ -133,10 +138,13 @@ pytest -q
   invalid ids, unavailable or misbehaving LLM, conversation isolation, authorisation, no cross-customer leakage,
   prompt injection in customer text, safe output formatting and rule names in words instead of codes. Test
   customers are picked from the dataset by their situation, not hard-coded.
+* Regions (6, `tests/test_regions.py`): every dataset city is in the city table, state totals equal the cockpit
+  (750 customers, 204 likely to cancel, €64,426 at stake), cities carry their map position, invalid parameters,
+  unknown cities counted as unassigned, missing city table.
 * LLM client (9, `tests/test_llm_client.py`): request format of the hessian.AI gateway, removal of reasoning
   blocks, failures without leaking the key, pause after network errors.
 
-Last run: **99 passed** (Python 3.13 local).
+Last run: **105 passed** (Python 3.13 local).
 
 ## Docker
 
@@ -215,15 +223,17 @@ app/
     employee_copilot_service.py  Chat, briefing, context selection, deterministic composition
     conversation_service.py      SQLite: copilot conversations and messages
     decision_log.py              SQLite: decisions, approvals, drafts, settings
+    region_service.py            Totals per state and city for the Regions map (reporting only)
     lighty.py                    Facade used by the routes
 frontend/
   app.py                         Streamlit entry: theme, sign-in, navigation
   lighty_api.py                  Client for the backend API
   ui.py                          Design pieces filled with API data, cached data access, approve/reject
-  views/                         Cockpit, approval queue, customer page with Ask Lighty
+  views/                         Cockpit, churn risk, regions map, approval queue, customer page with Ask Lighty
+  static/                        Logo, map outlines (geo/, Natural Earth) and Plotly's base map file (topojson/)
   theme/                         Lighty "Daylight" design from the design team (CSS, helpers, preview)
 tests/                           pytest suite
-data/                            Dataset (synthetic)
+data/                            Dataset (synthetic); reference/city_regions.csv maps cities to states
 docs/METHODOLOGY.md              Method, assumptions, limitations
 API_CONTRACT.md                  Frontend contract
 ```

@@ -74,6 +74,10 @@ class AppSettings(BaseSettings):
         return self.data_dir / self.event_stream_file
 
     @property
+    def city_regions_path(self) -> Path:
+        return self.data_dir / "reference" / "city_regions.csv"
+
+    @property
     def sqlite_path(self) -> Path:
         return self.runtime_dir / self.sqlite_file
 

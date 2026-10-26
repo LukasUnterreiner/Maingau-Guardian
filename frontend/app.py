@@ -67,6 +67,7 @@ if "token" not in st.session_state:
 pages = [
     st.Page("views/cockpit.py", title="Cockpit", icon=":material/space_dashboard:", default=True),
     st.Page("views/risk.py", title="Churn risk", icon=":material/trending_down:"),
+    st.Page("views/regions.py", title="Regions", icon=":material/map:"),
     st.Page("views/approvals.py", title="Approval queue", icon=":material/inbox:"),
     st.Page("views/customer.py", title="Customers", icon=":material/group:"),
 ]

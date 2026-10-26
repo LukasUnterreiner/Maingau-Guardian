@@ -82,6 +82,12 @@ def customers(token: str, *, search: str | None = None, has_service_issue: bool 
     return _request("GET", "/api/customers", token, params={k: v for k, v in params.items() if v is not None})
 
 
+def regions(token: str, *, level: str = "state", state: str | None = None) -> dict:
+    params = {"level": level, "state": state}
+    return _request("GET", "/api/marketing/regions", token, timeout=60,
+                    params={k: v for k, v in params.items() if v is not None})
+
+
 def customer(token: str, customer_id: str) -> dict:
     return _request("GET", f"/api/customers/{customer_id}", token)
 

@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from app.models.runtime_settings import RuntimeSettingsUpdate
 from app.models.schemas import (
     AIRequest, Customer360Response, CustomerListResponse, ErrorResponse, ExplainResponse, HealthResponse,
-    MarketingOverview, MarketingRecommendationList, MessageResponse, RecommendationResponse, ReviewRequest,
-    ReviewResponse, SettingsResponse, SimulationRequest, SimulationResponse,
+    MarketingOverview, MarketingRecommendationList, MessageResponse, RecommendationResponse, RegionsResponse,
+    ReviewRequest, ReviewResponse, SettingsResponse, SimulationRequest, SimulationResponse,
 )
 from app.services.clv_engine import ScenarioParams
 from app.services.lighty import Lighty
@@ -108,6 +108,14 @@ def marketing_recommendations(
         include_no_contact = True
     return g.marketing_recommendations(page, page_size, action_type, channel, business_line, approval_status,
                                        include_no_contact)
+
+
+@router.get("/marketing/regions", response_model=RegionsResponse, tags=["marketing"], dependencies=GUARD)
+def marketing_regions(level: Literal["state", "city"] = "state",
+                      state: str | None = Query(None, pattern=r"^(DE-[A-Z]{2}|unassigned)$"),
+                      g: Lighty = Depends(lighty)):
+    """Customers, churn risk, value and workload per state or city (reporting only, never used for decisions)."""
+    return g.regions(level, state)
 
 
 @router.get("/marketing/settings", response_model=SettingsResponse, tags=["marketing"])

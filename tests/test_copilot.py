@@ -450,6 +450,7 @@ def test_optional_protection_of_customer_endpoints(settings, dataset, tmp_path):
                                     "warm_portfolio_on_startup": False})
     with TestClient(create_app(s, Lighty(s, dataset=dataset, decision_log=DecisionLog(tmp_path / "p.sqlite3")))) as c:
         assert c.get("/api/customers/MG-100004").status_code == 401
+        assert c.get("/api/marketing/regions").status_code == 401
         assert c.get("/api/customers/MG-100004", headers={"X-Employee-Token": "svc-token-123456"}).status_code == 200
         assert c.get("/api/health").status_code == 200
 

@@ -119,6 +119,19 @@
 .lt-tagid { padding: 1px 7px; border-radius: 8px; background: var(--lt-sunken); border: 1px solid var(--lt-line);
             font-size: 12px; font-weight: 600; color: var(--lt-ink-2); }
 
+/* regions page: ranked list next to the map */
+.lt-reglist { display: flex; flex-direction: column; }
+.lt-reglist__row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 4px 12px;
+                   align-items: center; padding: 8px 10px; margin: 0 -10px; border-radius: 12px; }
+.lt-reglist__row.is-on { background: var(--lt-primary-tint); }
+.lt-reglist__name { font-size: 14px; font-weight: 600; color: var(--lt-ink); }
+.lt-reglist__value { font-size: 14px; color: var(--lt-ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.lt-reglist__bar { height: 8px; border-radius: 999px; background: var(--lt-line); overflow: hidden; }
+.lt-reglist__bar span { display: block; height: 100%; border-radius: 999px; background: var(--lt-primary); }
+.lt-reglist__note { grid-column: 1 / -1; font-size: 12px; line-height: 16px; color: var(--lt-muted); }
+.lt-tiles--two { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 4px; }
+@media (max-width: 640px) { .lt-tiles--two { grid-template-columns: 1fr; } }
+
 /* the Lighty hero sits flush with the buttons below it */
 .lt-hero { margin-bottom: 4px; }
 

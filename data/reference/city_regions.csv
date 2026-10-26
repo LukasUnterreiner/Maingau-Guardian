@@ -1,0 +1,14 @@
+city,state_code,state_name,latitude,longitude
+Berlin,DE-BE,Berlin,52.5200,13.4050
+Darmstadt,DE-HE,Hessen,49.8728,8.6512
+Frankfurt,DE-HE,Hessen,50.1109,8.6821
+Hamburg,DE-HH,Hamburg,53.5511,9.9937
+Hanau,DE-HE,Hessen,50.1328,8.9169
+Köln,DE-NW,Nordrhein-Westfalen,50.9375,6.9603
+Mainz,DE-RP,Rheinland-Pfalz,49.9929,8.2473
+München,DE-BY,Bayern,48.1372,11.5755
+Obertshausen,DE-HE,Hessen,50.0717,8.8486
+Offenbach,DE-HE,Hessen,50.0956,8.7761
+Stuttgart,DE-BW,Baden-Württemberg,48.7758,9.1829
+Wiesbaden,DE-HE,Hessen,50.0826,8.2400
+Würzburg,DE-BY,Bayern,49.7913,9.9534
