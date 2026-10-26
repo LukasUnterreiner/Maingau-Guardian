@@ -214,14 +214,14 @@ def minibars(values: list[float], color: str, title: str) -> str:
     """Small bar chart in a tile. Real numbers only, scaled to the largest; the tooltip says what they are."""
     top = max([v for v in values if v > 0] + [1e-9])
     return (f'<div class="lt-minibars" title="{esc(title)}" aria-hidden="true">'
-            + "".join(f'<span style="height: {max(v / top * 100, 6) if v > 0 else 4:.0f}%; background: {color};"></span>'
-                      for v in values) + '</div>')
+            + "".join(f'<span class="lt-minibar"><span style="height: {max(v / top * 100, 8) if v > 0 else 0:.0f}%; '
+                      f'background: {color};"></span></span>' for v in values) + '</div>')
 
 
 def tile(icon: str, label: str, value: str, note: str, color: str, bars: str = "") -> str:
     return (f'<div class="lt-tile"><div class="lt-tile__head"><span class="lt-tile__icon" style="color: {color};">'
             f'{svg(icon)}</span><span>{label}</span></div>'
-            f'<div class="lt-tile__body"><span class="lt-tile__value">{value}</span>{bars}</div>'
+            f'<span class="lt-tile__value">{value}</span>{bars}'
             f'<span class="lt-tile__note">{note}</span></div>')
 
 
@@ -545,18 +545,13 @@ def share_below(churn: float, levels: dict) -> float:
 def risk_tiles(at_risk: list[dict], index: list[dict], levels: dict) -> str:
     cancelled = [c for c in index if c.get("cancellation_pending")]
     lost = sum(c.get("clv_service_impact_reported_eur") or 0 for c in index)
-    by_level = {lvl: sum(c.get("current_clv_eur") or 0 for c in index
-                         if risk_level(c.get("churn_probability") or 0, levels) == lvl) for lvl in ("Low", "Medium", "High")}
     return ('<div class="lt-tiles">'
             + tile("users", "Likely to cancel", esc(f"{len(at_risk):,}"),
                    f"customers with ≥ {esc(pct(levels['high']))} churn risk in 12 months", "var(--lt-resolve)",
                    minibars(churn_histogram(index), "var(--lt-resolve)",
                             "All customers by churn risk: 0–9 %, 10–19 %, … 60 % and more"))
             + tile("euro", "Customer value at stake", esc(eur(sum(c.get("current_clv_eur") or 0 for c in at_risk), decimals=0)),
-                   "lost if they cancel (their CLV) · Estimate", "var(--lt-loss)",
-                   minibars(list(by_level.values()), "var(--lt-loss)",
-                            "Customer value by risk level: " + ", ".join(f"{k} {eur(v, decimals=0)}"
-                                                                       for k, v in by_level.items())))
+                   "lost if they cancel (their CLV) · Estimate", "var(--lt-loss)")
             + tile("wrench", "Already lost to service problems", esc(eur(lost, decimals=0)),
                    "CLV reduced by service cases, all customers · from the data", "var(--lt-primary)")
             + tile("door", "Cancellations received", esc(f"{len(cancelled):,}"),

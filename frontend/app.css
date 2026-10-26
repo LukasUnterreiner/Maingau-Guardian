@@ -54,19 +54,23 @@
                      color: var(--lt-ink); }
 .lt-subtitle { margin: 0; font-size: 15px; line-height: 24px; color: var(--lt-muted); }
 
-.lt-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin: 10px 0 14px; }
+.lt-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin: 10px 0 14px; }
+@media (max-width: 1180px) { .lt-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .lt-tiles { grid-template-columns: 1fr; } }
 .lt-tile { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px; background: var(--lt-surface);
            border: 1px solid var(--lt-line); border-radius: var(--lt-radius-xl); box-shadow: var(--lt-shadow-soft); }
 .lt-tile__head { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--lt-ink-2); }
 .lt-tile__icon { width: 34px; height: 34px; border-radius: 12px; background: var(--lt-sunken); border: 1px solid var(--lt-line);
                  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .lt-tile__icon svg { width: 18px; height: 18px; }
-.lt-tile__body { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-.lt-tile__value { font-size: 36px; line-height: 1; font-weight: 700; letter-spacing: -0.03em; color: var(--lt-ink);
+.lt-tile__value { font-size: clamp(26px, 2.4vw, 34px); line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; color: var(--lt-ink);
                   font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lt-tile__note { font-size: 12.5px; line-height: 18px; color: var(--lt-muted); }
-.lt-minibars { display: flex; align-items: flex-end; gap: 4px; height: 40px; flex-shrink: 0; }
-.lt-minibars span { display: block; width: 7px; border-radius: 4px; }
+/* small column chart under the number: every bar has a pale track, so small values still read as bars */
+.lt-minibars { display: flex; align-items: flex-end; gap: 6px; height: 30px; }
+.lt-minibar { display: flex; align-items: flex-end; width: 12px; height: 100%; border-radius: 4px; overflow: hidden;
+              background: var(--lt-sunken); box-shadow: inset 0 0 0 1px var(--lt-line); }
+.lt-minibar span { display: block; width: 100%; border-radius: 4px; }
 
 [class*="st-key-sec-"] { margin-top: 14px; }
 .lt-section { display: flex; align-items: center; gap: 10px; }
