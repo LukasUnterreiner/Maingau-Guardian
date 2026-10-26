@@ -18,6 +18,11 @@
 .st-key-ask-lighty { background: var(--lt-surface); border: 1px solid var(--lt-line); border-radius: var(--lt-radius-xl);
                      padding: 20px; box-shadow: var(--lt-shadow-card); }
 
+/* one question + answer; a line and air between turns */
+[class*="st-key-turn-"] { gap: 18px; padding: 8px 0 12px; }
+[class*="st-key-turn-next-"] { padding-top: 24px; border-top: 1px solid var(--lt-line); }
+.lt-msg-user { width: fit-content; margin-left: auto; }
+
 /* the German wording box: copy only, never send */
 [class*="st-key-suggestion-"] { gap: 6px; padding: 16px; border: 1px solid var(--lt-primary-tint-line);
                                 border-radius: var(--lt-radius-lg); background: #F2F8FF; }

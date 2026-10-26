@@ -120,19 +120,19 @@ and a phone-width view. There are no automated tests for the web app.
 pytest -q
 ```
 
-97 tests:
+98 tests:
 
 * Engine (44): the 12 mandatory scenarios of the brief, the MG‑100004 service case, a dataset-wide check that the
   CLV formula and all churn drivers reproduce `customer_value`, API contract/error tests and an unreachable-AI test.
-* Copilot (44, `tests/test_copilot.py`): context building, personalised answers, unresolved issues, use of the
+* Copilot (45, `tests/test_copilot.py`): context building, personalised answers, unresolved issues, use of the
   engine decision, consent restrictions, cross-sell and retention, no fabricated values, missing information,
   invalid ids, unavailable or misbehaving LLM, conversation isolation, authorisation, no cross-customer leakage,
-  prompt injection in customer text and safe output formatting. Test customers are picked from the dataset by their
-  situation, not hard-coded.
+  prompt injection in customer text, safe output formatting and rule names in words instead of codes. Test
+  customers are picked from the dataset by their situation, not hard-coded.
 * LLM client (9, `tests/test_llm_client.py`): request format of the hessian.AI gateway, removal of reasoning
   blocks, failures without leaking the key, pause after network errors.
 
-Last run: **97 passed** (Python 3.13 local).
+Last run: **98 passed** (Python 3.13 local).
 
 ## Docker
 

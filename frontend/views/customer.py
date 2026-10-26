@@ -75,10 +75,13 @@ with right, st.container(key="ask-lighty"):
     if not chat["turns"]:
         st.html('<p class="lt-body">Ask anything about this customer. Lighty answers from the data, '
                 'says what is missing, and never changes the decision above.</p>')
+    elif banner := ui.sales_banner(chat["turns"][-1][1]):
+        ui.html_block(banner)
     for n, (question, resp) in enumerate(chat["turns"]):
-        ui.html_block(ui.user_message(question))
-        ui.html_block(ui.lighty_answer(resp))
-        ui.suggestion(resp, f"{cid}-{n}")
+        with st.container(key=f"turn-{'next-' if n else ''}{cid}-{n}"):   # "next" turns get a line above
+            ui.html_block(ui.user_message(question))
+            ui.html_block(ui.lighty_answer(resp))
+            ui.suggestion(resp, f"{cid}-{n}")
     if error := st.session_state.pop("chat-error", None):
         st.error(error)
 

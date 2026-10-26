@@ -33,6 +33,7 @@ from app.services.conversation_service import ConversationStore
 from app.services.customer_context_service import CustomerContext, CustomerContextService, Fact
 from app.services.llm_client import LLMUnavailable
 from app.services.recommendation_engine import NO_CONTACT
+from app.services.rule_labels import humanize, labels
 
 if TYPE_CHECKING:
     from app.services.lighty import Lighty
@@ -353,13 +354,13 @@ class EmployeeCopilotService:
         sit = ctx.situation
         items: list[Point] = []
         if sit.service_first:
-            codes = f" ({', '.join(sit.service_block_codes)})" if sit.service_block_codes else ""
+            codes = f" ({labels(sit.service_block_codes, lang)})" if sit.service_block_codes else ""
             items.append(Point(L(lang, f"Keine Produkt- oder Tarifangebote, solange der Service-Fall offen ist{codes}.",
                                  f"No product or tariff offers while the service case is open{codes}."),
                                self._ids(ctx, "restrictions") + self._issues(ctx, lang)[1]))
         elif sit.marketing_block_codes and not ctx.decision.ranked:
-            items.append(Point(L(lang, "Keine personalisierten Angebote: " + ", ".join(sit.marketing_block_codes) + ".",
-                                 "No personalised offers: " + ", ".join(sit.marketing_block_codes) + "."),
+            items.append(Point(L(lang, "Keine personalisierten Angebote: " + labels(sit.marketing_block_codes, lang) + ".",
+                                 "No personalised offers: " + labels(sit.marketing_block_codes, lang) + "."),
                                self._ids(ctx, "restrictions")))
         items.append(Point(L(lang, "Keine Rabatte, Gutschriften, Kulanz oder Konditionen zusagen, die nicht freigegeben "
                                    "sind, und keine Ergebnisse garantieren.",
@@ -475,7 +476,7 @@ class EmployeeCopilotService:
                 ({"service", "retention"} & set(intents) and sit.has_service_issue):
             points.append(self._nba_point(ctx, lang))
         if sit.service_first and ({"approach", "offer", "product", "general", "retention"} & set(intents)):
-            codes = f" ({', '.join(sit.service_block_codes)})" if sit.service_block_codes else ""
+            codes = f" ({labels(sit.service_block_codes, lang)})" if sit.service_block_codes else ""
             points.append(Point(L(lang, f"Keine Verkaufsangebote während des offenen Service-Falls{codes}. Erst das "
                                         "Problem lösen.",
                                   f"No sales offers during the open service case{codes}. Solve the problem first."),
@@ -647,7 +648,7 @@ class EmployeeCopilotService:
     def _service_warning(ctx: CustomerContext) -> dict[str, str]:
         codes = ctx.situation.service_block_codes
         return {"code": "sales_restricted",
-                "message": "Open service case: no sales offers" + (f" ({', '.join(codes)})." if codes else ".")}
+                "message": "Open service case: no sales offers" + (f" ({labels(codes, 'en')})." if codes else ".")}
 
     def _allowed_products(self, ctx: CustomerContext) -> set[str]:
         sit = ctx.situation
@@ -680,7 +681,7 @@ class EmployeeCopilotService:
                 ) -> dict[str, Any]:
         nba_ids = self._ids(ctx, "nba", "restrictions")
         if llm:
-            response = llm["answer"]
+            response = humanize(llm["answer"], lang)
             used = list(dict.fromkeys(llm["fact_ids"] + nba_ids))
         else:
             response = composed.text()

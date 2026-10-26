@@ -309,13 +309,17 @@ def _fact_label(fact: dict) -> str:
     return f"{label} {ident}".strip() if label else key.replace("_", " ").replace(":", " ").capitalize()
 
 
+def sales_banner(resp: dict) -> str:
+    """The yellow "no sales offers" banner; shown once at the top of the chat, not under every answer."""
+    return "".join(f'<div class="lt-banner lt-banner--attention">{svg("alert")}{esc(w.get("message"))}</div>'
+                   for w in resp.get("warnings", []) if w.get("code") == "sales_restricted")
+
+
 def lighty_answer(resp: dict) -> str:
-    """One copilot answer: banners, origin chip, the answer lines, fact chips and confidence."""
+    """One copilot answer: origin chip, the answer lines, the facts it is based on and confidence."""
     origin = resp.get("answer_origin") or {}
     chip = ('<span class="lt-origin lt-origin--ai">AI-phrased · checked</span>' if origin.get("llm_used")
             else '<span class="lt-origin">Rule-based</span>')
-    banners = "".join(f'<div class="lt-banner lt-banner--attention">{svg("alert")}{esc(w.get("message"))}</div>'
-                      for w in resp.get("warnings", []) if w.get("code") == "sales_restricted")
     items, paragraphs = [], []
     for line in (resp.get("response") or "").splitlines():
         if line.startswith("- "):
@@ -327,10 +331,12 @@ def lighty_answer(resp: dict) -> str:
     facts = {f["fact_id"]: f for f in resp.get("supporting_facts", [])}
     parts = resp.get("answer_parts") or {}
     chips = []
-    for ids, cls in (("verified_fact_ids", "fact"), ("engine_computed_fact_ids", "calc"), ("data_gap_fact_ids", "gap")):
+    for ids, cls, kind in (("verified_fact_ids", "fact", "From the data"),
+                           ("engine_computed_fact_ids", "calc", "Calculated by Lighty"),
+                           ("data_gap_fact_ids", "gap", "Missing in the data")):
         for fid in parts.get(ids, []):
             if fid in facts:
-                chips.append(f'<span class="lt-chip lt-chip--{cls}" title="{esc(facts[fid].get("text"))}">'
+                chips.append(f'<span class="lt-chip lt-chip--{cls}" title="{kind}: {esc(facts[fid].get("text"))}">'
                              f'{esc(_fact_label(facts[fid]))}</span>')
     conf = resp.get("confidence_or_uncertainty") or {}
     level = conf.get("level")
@@ -339,10 +345,14 @@ def lighty_answer(resp: dict) -> str:
                   f'<span></span></span><span class="lt-small">{esc(level.capitalize())}</span></div>') if level else ""
     other = [w for w in resp.get("warnings", []) if w.get("code") != "sales_restricted"]
     notes = "".join(f'<div class="lt-caption">{esc(w.get("message"))}</div>' for w in other)
-    return (f'{banners}<div class="lt-msg-lighty"><div class="lt-row" style="gap: 8px;"><strong>Lighty</strong>{chip}</div>'
-            f'{body}</div>'
-            + (f'<div class="lt-row" style="gap: 6px;">{"".join(chips)}</div>' if chips else "")
-            + confidence + notes)
+    out = [f'<div class="lt-msg-lighty"><div class="lt-row" style="gap: 8px;"><strong>Lighty</strong>{chip}</div>'
+           f'{body}</div>']
+    if chips:
+        out.append('<div class="lt-stack" style="gap: 6px;"><span class="lt-label">Based on</span>'
+                   f'<div class="lt-row" style="gap: 6px;">{"".join(chips)}</div></div>')
+    if confidence or notes:
+        out.append(f'<div class="lt-stack" style="gap: 6px;">{confidence}{notes}</div>')
+    return f'<div class="lt-stack" style="gap: 16px;">{"".join(out)}</div>'
 
 
 def suggestion(resp: dict, key: str) -> None:

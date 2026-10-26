@@ -111,6 +111,8 @@ All errors share one shape:
 | `NO_SERVICE_ISSUE` | P‑SV‑01 without anything to resolve. |
 | `NO_CUSTOMER_REQUEST` | Inquiry-reply path without an open tariff inquiry. |
 
+The codes appear only in structured fields (`exclusion_reasons`, `eligibility_checks`, `restriction_codes`, the decision `reason`). Texts written for employees (copilot `response`, `warnings[].message`, fact texts) use readable names instead, e.g. "offene Beschwerde" / "open complaint" (`app/services/rule_labels.py`).
+
 ## 4. Endpoints
 
 ### 4.1 `GET /api/health`
@@ -588,7 +590,7 @@ Example — frustrated customer with an open complaint (MG‑100004, service age
 {
   "conversation_id": "CONV-fce14ed04fc0467db7f47d39da2a44b9",
   "customer_id": "MG-100004", "turn": 1, "language": "de", "intents": ["approach"],
-  "response": "- Aktuelle Situation: eine offene Beschwerde; der Kunde wünscht einen Rückruf; Mahnstufe 3.\n- Lighty empfiehlt den Service-Prozess (P-SV-01, ohne Angebot) über service_call, erwarteter dCLV +66.50 EUR. Erst lösen; Angebote bewertet Lighty danach neu.\n- Keine Verkaufsangebote während des offenen Service-Falls (OPEN_COMPLAINT_BLOCKS_MARKETING, DUNNING_BLOCKS_MARKETING). Erst das Problem lösen.\n- Anrede: Sie. Zuhören, das Anliegen zusammenfassen, nächste Schritte verbindlich, aber ohne Zusagen zu Ergebnissen vereinbaren.",
+  "response": "- Aktuelle Situation: eine offene Beschwerde; der Kunde wünscht einen Rückruf; Mahnstufe 3.\n- Lighty empfiehlt den Service-Prozess (P-SV-01, ohne Angebot) über service_call, erwarteter dCLV +66.50 EUR. Erst lösen; Angebote bewertet Lighty danach neu.\n- Keine Verkaufsangebote während des offenen Service-Falls (offene Beschwerde, offene Mahnung). Erst das Problem lösen.\n- Anrede: Sie. Zuhören, das Anliegen zusammenfassen, nächste Schritte verbindlich, aber ohne Zusagen zu Ergebnissen vereinbaren.",
   "recommended_action": {
     "decision_id": "DEC-48c1817e05fdc73d", "product_id": "P-SV-01", "product_name": "Service-Only / No offer",
     "action_type": "service", "channel": "service_call", "process": "service", "expected_dclv_eur": 66.5,
@@ -628,12 +630,12 @@ Example — frustrated customer with an open complaint (MG‑100004, service age
     "…"
   ],
   "warnings": [
-    { "code": "sales_restricted", "message": "Open service case: no sales offers (OPEN_COMPLAINT_BLOCKS_MARKETING, DUNNING_BLOCKS_MARKETING)." },
-    { "code": "withheld_behavioural_marketing", "message": "profiling_analytics consent is not_given: newsletter engagement, portal page views and abandoned carts are not used for personalisation." }
+    { "code": "sales_restricted", "message": "Open service case: no sales offers (open complaint, open dunning)." },
+    { "code": "withheld_behavioural_marketing", "message": "Profiling consent not given: newsletter engagement, portal page views and abandoned carts are not used for personalisation." }
   ],
   "confidence_or_uncertainty": {
     "level": "medium",
-    "reasons": ["profiling_analytics consent is not_given: newsletter engagement, portal page views and abandoned carts are not used for personalisation."],
+    "reasons": ["Profiling consent not given: newsletter engagement, portal page views and abandoned carts are not used for personalisation."],
     "data_gaps": [],
     "assumptions": ["Geldwerte und Wahrscheinlichkeiten sind Modellschätzungen (CLV-Methode, beobachtete Quoten), keine garantierten Ergebnisse und kein Kausalnachweis."]
   },
@@ -738,7 +740,7 @@ max 400 characters, `flagged_as_instruction_like`, label *unverified customer co
     "decision_intelligence": [ { "key": "nba", "…": "…" }, { "key": "restrictions", "…": "…" } ]
   },
   "data_gaps": [],
-  "withheld": [ { "category": "behavioural_marketing", "count": null, "reason": "profiling_analytics consent is not_given: newsletter engagement, portal page views and abandoned carts are not used for personalisation." } ],
+  "withheld": [ { "category": "behavioural_marketing", "count": null, "reason": "Profiling consent not given: newsletter engagement, portal page views and abandoned carts are not used for personalisation." } ],
   "untrusted_customer_texts": [],
   "source_references": [ { "ref_id": "R10", "table": "consent_status", "record_id": "MG-100004/newsletter_email", "fields": ["status", "updated_at", "source", "double_opt_in_confirmed_at"], "occurred_at": "2020-08-28 11:04:07", "note": null }, "…" ],
   "selection": { "question": "Welche Einwilligungen gibt es?", "intents": ["consent"], "products": [], "topics": ["consent", "contact_policy", "restrictions"] }

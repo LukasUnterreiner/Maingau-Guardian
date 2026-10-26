@@ -36,6 +36,7 @@ from app.services.churn_model import RETENTION_DRIVERS, SERVICE_DRIVERS
 from app.services.customer_service import CustomerState
 from app.services.eligibility_engine import PROFILING_CONSENT
 from app.services.recommendation_engine import NO_CONTACT, Decision, service_category
+from app.services.rule_labels import humanize
 from app.services.tonality import customer_lines_from_transcript
 
 if TYPE_CHECKING:
@@ -243,7 +244,8 @@ class _Builder:
 
     def add(self, key: str, section: str, kind: str, topics: set[str], de: str, en: str, value: Any,
             refs: list[str], sensitivity: str = "standard") -> Fact:
-        f = Fact(f"F{len(self.facts) + 1}", key, section, kind, frozenset(topics), de, en, value, refs, sensitivity)
+        f = Fact(f"F{len(self.facts) + 1}", key, section, kind, frozenset(topics), humanize(de, "de"),
+                 humanize(en, "en"), value, refs, sensitivity)
         self.facts.append(f)
         return f
 
@@ -641,8 +643,8 @@ class CustomerContextService:
         if not profiling:
             prof = s.consents[PROFILING_CONSENT]
             withheld.append({"category": "behavioural_marketing", "count": None,
-                             "reason": f"profiling_analytics consent is {prof.status}: newsletter engagement, portal "
-                                       "page views and abandoned carts are not used for personalisation."})
+                             "reason": f"Profiling consent {prof.status.replace('_', ' ')}: newsletter engagement, "
+                                       "portal page views and abandoned carts are not used for personalisation."})
             b.add("interests", "marketing", "data_gap", {"interests", "marketing"},
                   "Produktinteressen aus Verhalten (Newsletter, Portal, Warenkorb) werden nicht genutzt: keine wirksame "
                   "Profiling-Einwilligung.",

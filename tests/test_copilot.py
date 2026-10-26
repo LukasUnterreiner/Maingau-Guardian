@@ -234,7 +234,8 @@ def test_retention_guidance_for_pending_cancellation(copilot_client, portfolio):
     cid = pick(portfolio, lambda d: d.state.cancellation_pending)
     b = chat(copilot_client, cid, "Der Kunde will kündigen. Wie kann ich ihn halten?").json()
     assert "retention" in b["intents"]
-    assert "CANCELLATION_PENDING_BLOCKS_MARKETING" in b["response"]
+    assert "Kündigung liegt vor" in b["response"]
+    assert "CANCELLATION_PENDING_BLOCKS_MARKETING" in b["recommended_action"]["restriction_codes"]
     assert any(f["key"] == "churn" for f in b["supporting_facts"])
     assert "Kündigung" in b["suggested_customer_message"]["text"]
     assert b["recommended_action"]["product_id"] in ("NO_CONTACT", "P-SV-01")
@@ -554,3 +555,15 @@ def test_suggested_questions_and_conversation_list(copilot_client):
     conv = chat(copilot_client, "MG-100004", q["questions"][0]["question"]).json()["conversation_id"]
     lst = copilot_client.get("/api/copilot/conversations", params={"customer_id": "MG-100004"}, headers=SVC).json()
     assert [i["conversation_id"] for i in lst["items"]] == [conv]
+
+
+def test_answers_name_rules_in_words_not_codes(copilot_client):
+    """Employees read words such as "offene Beschwerde"; the rule codes stay in the structured fields."""
+    b = chat(copilot_client, "MG-100004", "Was sollte ich im Gespräch vermeiden?").json()
+    texts = [b["response"]] + [w["message"] for w in b["warnings"]] + [f["text"] for f in b["supporting_facts"]]
+    assert not any(re.search(r"\b[A-Z]+(?:_[A-Z]+)*_(?:MARKETING|LIMIT|GAP|GIVEN|WITHDRAWN|MISSING|AVAILABLE)\b", x)
+                   for x in texts)
+    assert "offene Beschwerde" in b["response"]
+    assert "open complaint" in next(w["message"] for w in b["warnings"] if w["code"] == "sales_restricted")
+    assert {"OPEN_COMPLAINT_BLOCKS_MARKETING", "DUNNING_BLOCKS_MARKETING"} <= set(
+        b["recommended_action"]["restriction_codes"])
