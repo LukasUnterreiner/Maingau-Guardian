@@ -1,4 +1,4 @@
-"""Application facade: wires the engines together and owns caches and runtime settings.
+"""Lighty application facade: wires the engines together and owns caches and runtime settings.
 
 API routes only talk to this class; business logic lives in the engines.
 """
@@ -15,16 +15,21 @@ from app.config.settings import AppSettings
 from app.data.loader import Dataset, load_dataset
 from app.models.runtime_settings import RuntimeSettings, RuntimeSettingsUpdate
 from app.services.acceptance_model import AcceptanceModel
+from app.services.access_control import AccessControl
+from app.services.ai_prompt_service import AIPromptService
 from app.services.ai_service import AIService
 from app.services.analytics_service import AnalyticsService, segment_of
 from app.services.clv_engine import CLVEngine, ScenarioParams
 from app.services.counterfactual_engine import CounterfactualEngine
 from app.services.customer_service import CustomerService, CustomerState
 from app.services.decision_log import DecisionLog
+from app.services.conversation_service import ConversationStore
 from app.services.eligibility_engine import EligibilityEngine
+from app.services.employee_copilot_service import EmployeeCopilotService
+from app.services.llm_client import ChatModel
 from app.services.recommendation_engine import Decision, POverrides, RecommendationEngine, service_category
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("lighty")
 
 
 class NotFound(Exception):
@@ -39,8 +44,11 @@ def _iso(v: Any) -> Any:
     return v.isoformat(sep=" ") if isinstance(v, datetime) else v
 
 
-class Guardian:
-    def __init__(self, settings: AppSettings, dataset: Dataset | None = None, decision_log: DecisionLog | None = None):
+class Lighty:
+    """Smarter decisions. Better conversations."""
+
+    def __init__(self, settings: AppSettings, dataset: Dataset | None = None, decision_log: DecisionLog | None = None,
+                 llm: ChatModel | None = None):
         self.cfg = settings
         self.ds = dataset or load_dataset(settings.workbook_path, settings.event_stream_path, settings.snapshot_at)
         self.log = decision_log or DecisionLog(settings.sqlite_path)
@@ -48,7 +56,10 @@ class Guardian:
         self.customers = CustomerService(self.ds)
         self.clv = CLVEngine(self.ds.assumptions)
         self.eligibility = EligibilityEngine(self.ds.products)
-        self.ai = AIService(settings)
+        self.ai = AIService(settings, llm)
+        self.access = AccessControl(settings)
+        self.copilot = EmployeeCopilotService(self, ConversationStore(self.log.path),
+                                              AIPromptService(self.ai, settings.copilot_history_messages))
         self._lock = threading.RLock()
         self._portfolio: list[Decision] | None = None
         self._build_engines()
@@ -386,6 +397,8 @@ class Guardian:
             "default_as_of": self.default_as_of.isoformat(sep=" "),
             "settings_version": self.settings_version,
             "ai": self.ai.status(),
+            "employee_auth": {"mode": self.access.mode,
+                              "protect_customer_endpoints": self.cfg.protect_customer_endpoints},
             "data_quality": self.ds.quality_report,
             "acceptance_model": self.acceptance.describe(),
         }

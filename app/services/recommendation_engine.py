@@ -1,4 +1,4 @@
-"""Guardian recommendation engine: eligibility first, then CLV ranking.
+"""Lighty recommendation engine: eligibility first, then CLV ranking.
 
 Decision rule
 -------------
@@ -25,7 +25,7 @@ from app.services.clv_engine import CLVEngine, MARKETING_ACTION_TYPES, ScenarioP
 from app.services.customer_service import CustomerService, CustomerState
 from app.services.eligibility_engine import CandidateEligibility, EligibilityEngine
 
-ENGINE_VERSION = "guardian-1.0.0"
+ENGINE_VERSION = "lighty-1.1.0"
 NO_CONTACT = "NO_CONTACT"
 
 

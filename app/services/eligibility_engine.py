@@ -107,7 +107,7 @@ def _prereq_rules() -> dict[str, Rule]:
         "P-SH-03": lambda s: (s.signals["has_gas"] and not s.signals["gas_meter_deregistered"], "active gas heating"),
         "P-SH-04": lambda s: (bool(s.profile.get("portal_account") or s.profile.get("app_installed")),
                               "digital customer (portal or app)"),
-        "P-AS-01": lambda s: (s.signals["ev_driver"], "EV driver signal (wallbox / EV charging telemetry)"),
+        "P-AS-01": lambda s: (s.signals["ev_driver"], "EV driver signal (wallbox, EV charging telemetry or e-mobility shop order)"),
     }
 
 

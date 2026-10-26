@@ -1,3 +1,4 @@
+# Lighty backend
 ARG BASE_IMAGE=python:3.12-slim
 FROM ${BASE_IMAGE}
 
@@ -16,10 +17,10 @@ COPY app ./app
 # Bundled copy of the dataset; a volume mounted at /srv/data takes precedence.
 COPY data /srv/data
 
-RUN useradd --create-home --uid 10001 guardian \
+RUN useradd --create-home --uid 10001 lighty \
     && mkdir -p /srv/runtime \
-    && chown -R guardian:guardian /srv
-USER guardian
+    && chown -R lighty:lighty /srv
+USER lighty
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \

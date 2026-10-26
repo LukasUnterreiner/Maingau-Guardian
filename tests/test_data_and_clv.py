@@ -29,38 +29,38 @@ def test_duplicate_events_are_dropped(dataset):
     assert len({e.event_id for e in dataset.events}) == len(dataset.events)
 
 
-def test_clv_formula_reproduces_dataset_at_snapshot(guardian, dataset):
+def test_clv_formula_reproduces_dataset_at_snapshot(lighty, dataset):
     """Inputs in customer_value are rounded, so allow a few EUR."""
-    for cid in guardian.customers.customer_ids():
-        s = guardian.customers.get_state(cid, dataset.snapshot_at)
+    for cid in lighty.customers.customer_ids():
+        s = lighty.customers.get_state(cid, dataset.snapshot_at)
         assert s.churn_now == pytest.approx(s.churn_snapshot, abs=1e-9)
         assert abs(s.clv_now_eur - s.clv_snapshot_reported_eur) < 3.5, cid
 
 
-def test_churn_drivers_match_documented_drivers_for_all_customers(guardian, dataset):
-    for cid in guardian.customers.customer_ids():
-        s = guardian.customers.get_state(cid, dataset.snapshot_at)
+def test_churn_drivers_match_documented_drivers_for_all_customers(lighty, dataset):
+    for cid in lighty.customers.customer_ids():
+        s = lighty.customers.get_state(cid, dataset.snapshot_at)
         text = dataset.customer_value[cid].get("churn_drivers") or ""
         expected = {code for part in text.split("; ") for label, code in DRIVER_LABELS.items() if label in part}
         assert {d.code for d in s.drivers} == expected, cid
         assert s.cancellation_pending == ("cancellation pending" in text), cid
 
 
-def test_higher_churn_lowers_clv_and_is_reflected(guardian):
+def test_higher_churn_lowers_clv_and_is_reflected(lighty):
     """Mandatory scenario 7."""
     values = [clv(200, 30, c, 0.06, 10) for c in (0.05, 0.15, 0.3, 0.6)]
     assert values == sorted(values, reverse=True)
-    s = guardian.customers.get_state("MG-100002", guardian.default_as_of)
-    base = guardian.clv.clv_now(s, ScenarioParams())
-    higher = guardian.clv.clv_now(s, ScenarioParams(churn_delta=0.1))
+    s = lighty.customers.get_state("MG-100002", lighty.default_as_of)
+    base = lighty.clv.clv_now(s, ScenarioParams())
+    higher = lighty.clv.clv_now(s, ScenarioParams(churn_delta=0.1))
     assert higher < base
     assert higher == pytest.approx(clv(s.annual_margin_eur, s.cost_to_serve_eur, s.churn_now + 0.1, 0.06, 10))
 
 
-def test_service_action_removes_only_service_drivers_without_double_counting(guardian):
-    s = guardian.customers.get_state("MG-100004", guardian.default_as_of)
-    prod = guardian.ds.products["P-SV-01"]
-    v = guardian.clv.value(s, prod, "service_email", 1.0, ScenarioParams())
+def test_service_action_removes_only_service_drivers_without_double_counting(lighty):
+    s = lighty.customers.get_state("MG-100004", lighty.default_as_of)
+    prod = lighty.ds.products["P-SV-01"]
+    v = lighty.clv.value(s, prod, "service_email", 1.0, ScenarioParams())
     removed = sum(d.increment for d in s.drivers if d.code in SERVICE_DRIVERS)
     expected = clv(s.annual_margin_eur, s.cost_to_serve_eur, s.churn_now - removed, 0.06, 10) - 15.0
     assert v.clv_after_accept_eur == pytest.approx(expected)
@@ -69,35 +69,35 @@ def test_service_action_removes_only_service_drivers_without_double_counting(gua
     assert v.expected_dclv_eur == pytest.approx(expected - v.clv_now_eur - v.contact_cost_eur)
 
 
-def test_one_off_margin_counted_once(guardian):
-    s = guardian.customers.get_state("MG-100002", guardian.default_as_of)
-    prod = guardian.ds.products["P-SH-01"]
-    v = guardian.clv.value(s, prod, "newsletter_email", 1.0, ScenarioParams())
+def test_one_off_margin_counted_once(lighty):
+    s = lighty.customers.get_state("MG-100002", lighty.default_as_of)
+    prod = lighty.ds.products["P-SH-01"]
+    v = lighty.clv.value(s, prod, "newsletter_email", 1.0, ScenarioParams())
     expected = clv(s.annual_margin_eur, s.cost_to_serve_eur, s.churn_now + prod["churn_effect_if_bought"], 0.06, 10) \
         + prod["annual_margin_if_bought_eur"]
     assert v.clv_after_accept_eur == pytest.approx(expected)
     assert v.added_annual_margin_eur == 0
 
 
-def test_recurring_margin_is_an_annuity(guardian):
-    s = guardian.customers.get_state("MG-100002", guardian.default_as_of)
-    prod = guardian.ds.products["P-MO-01"]
-    v = guardian.clv.value(s, prod, "newsletter_email", 1.0, ScenarioParams())
+def test_recurring_margin_is_an_annuity(lighty):
+    s = lighty.customers.get_state("MG-100002", lighty.default_as_of)
+    prod = lighty.ds.products["P-MO-01"]
+    v = lighty.clv.value(s, prod, "newsletter_email", 1.0, ScenarioParams())
     expected = clv(s.annual_margin_eur + 54, s.cost_to_serve_eur, s.churn_now - 0.02, 0.06, 10)
     assert v.clv_after_accept_eur == pytest.approx(expected)
 
 
-def test_sales_contact_during_service_case_is_penalised_on_reject(guardian):
-    s = guardian.customers.get_state("MG-100004", guardian.default_as_of)
-    v = guardian.clv.value(s, guardian.ds.products["P-MO-01"], "outbound_call", 0.1, ScenarioParams())
+def test_sales_contact_during_service_case_is_penalised_on_reject(lighty):
+    s = lighty.customers.get_state("MG-100004", lighty.default_as_of)
+    v = lighty.clv.value(s, lighty.ds.products["P-MO-01"], "outbound_call", 0.1, ScenarioParams())
     assert v.service_case_contact_penalty
     assert v.churn_after_reject == pytest.approx(s.churn_now + 0.05)
     assert v.clv_after_reject_eur < v.clv_now_eur
 
 
-def test_event_replay_updates_state(guardian, dataset):
-    snap = guardian.customers.get_state("MG-100004", dataset.snapshot_at)
-    live = guardian.customers.get_state("MG-100004", guardian.default_as_of)
+def test_event_replay_updates_state(lighty, dataset):
+    snap = lighty.customers.get_state("MG-100004", dataset.snapshot_at)
+    live = lighty.customers.get_state("MG-100004", lighty.default_as_of)
     assert snap.max_dunning_level == 2 and live.max_dunning_level == 3
     assert live.signals["callback_requested"] is True
     assert any(e["event_type"] == "dunning_level_changed" for e in live.applied_events)

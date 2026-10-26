@@ -7,7 +7,7 @@ from app.config.settings import AppSettings
 from app.main import create_app
 from app.services.ai_service import AIService
 from app.services.decision_log import DecisionLog
-from app.services.guardian import Guardian
+from app.services.lighty import Lighty
 
 REQUIRED_RECOMMENDATION_FIELDS = {
     "customer_id", "decision_id", "recommended_action", "action_type", "product_id", "channel", "tonality",
@@ -122,7 +122,7 @@ def test_settings_validation_cannot_loosen_hard_rules(client):
 
 def test_admin_token_enforced(settings, dataset, tmp_path):
     secured = settings.model_copy(update={"admin_token": __import__("pydantic").SecretStr("s3cret")})
-    g = Guardian(secured, dataset=dataset, decision_log=DecisionLog(tmp_path / "x.sqlite3"))
+    g = Lighty(secured, dataset=dataset, decision_log=DecisionLog(tmp_path / "x.sqlite3"))
     with TestClient(create_app(secured, g)) as c:
         assert c.put("/api/marketing/settings", json={}).status_code == 401
         assert c.put("/api/marketing/settings", json={}, headers={"X-Admin-Token": "wrong"}).status_code == 401
@@ -135,7 +135,7 @@ def test_unavailable_ai_does_not_break_engine(settings, dataset, tmp_path):
     broken = settings.model_copy(update={"ai_api_key": __import__("pydantic").SecretStr("sk-test-secret"),
                                          "ai_base_url": "http://127.0.0.1:9", "ai_model": "unverified-model",
                                          "ai_timeout_s": 0.5})
-    g = Guardian(broken, dataset=dataset, decision_log=DecisionLog(tmp_path / "ai.sqlite3"))
+    g = Lighty(broken, dataset=dataset, decision_log=DecisionLog(tmp_path / "ai.sqlite3"))
     with TestClient(create_app(broken, g)) as c:
         assert c.get("/api/health").json()["ai"]["enabled"] is True
         rec = c.get("/api/customers/MG-100004/recommendations")

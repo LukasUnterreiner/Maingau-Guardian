@@ -1,9 +1,9 @@
-# VM port 80 -> container port 8000. External access: port 38080 is forwarded to VM port 80.
+# Lighty backend. VM port 80 -> container port 8000. External access: port 38080 is forwarded to VM port 80.
 services:
-  guardian:
+  lighty:
     build: .
-    image: maingau-guardian:latest
-    container_name: maingau-guardian
+    image: lighty:latest
+    container_name: lighty
     restart: unless-stopped
     ports:
       - "80:8000"
@@ -15,7 +15,7 @@ services:
       RUNTIME_DIR: /srv/runtime
     volumes:
       - ./data:/srv/data:ro
-      - guardian-runtime:/srv/runtime
+      - lighty-runtime:/srv/runtime
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"]
       interval: 30s
@@ -29,4 +29,4 @@ services:
           memory: 2g
 
 volumes:
-  guardian-runtime:
+  lighty-runtime:

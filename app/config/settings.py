@@ -1,7 +1,7 @@
-"""Environment-driven configuration.
+"""Lighty environment-driven configuration.
 
-Everything secret (AI key, admin token) comes from environment variables and is
-never logged or returned by the API. Business parameters (discount rate, churn
+Everything secret (AI key, admin token, employee tokens) comes from environment
+variables and is never logged or returned by the API. Business parameters (discount rate, churn
 increments, contact costs...) are NOT configured here: they are read from the
 `value_assumptions` sheet of the workbook.
 """
@@ -30,12 +30,14 @@ class AppSettings(BaseSettings):
 
     # Persistence (SQLite decision log, approval states, runtime settings)
     runtime_dir: Path = Field(default=PROJECT_ROOT / "runtime", alias="RUNTIME_DIR")
-    sqlite_file: str = Field(default="guardian.sqlite3", alias="SQLITE_FILE")
+    sqlite_file: str = Field(default="lighty.sqlite3", alias="SQLITE_FILE")
 
     # API
     cors_origins: str = Field(default="http://localhost:3000,http://localhost:5173", alias="CORS_ORIGINS")
     admin_token: SecretStr | None = Field(default=None, alias="ADMIN_TOKEN")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    # Compute all 750 decisions at startup so the dashboard answers instantly.
+    warm_portfolio_on_startup: bool = Field(default=True, alias="WARM_PORTFOLIO_ON_STARTUP")
 
     # Optional AI integration (protocol must be verified against provider docs)
     ai_api_key: SecretStr | None = Field(default=None, alias="AI_API_KEY")
@@ -43,6 +45,21 @@ class AppSettings(BaseSettings):
     ai_model: str | None = Field(default=None, alias="AI_MODEL")
     ai_protocol: str = Field(default="openai_chat_completions", alias="AI_PROTOCOL")
     ai_timeout_s: float = Field(default=20.0, alias="AI_TIMEOUT_S")
+    # Request format details, so a gateway can be adapted without code changes once its docs are checked.
+    ai_chat_path: str = Field(default="/chat/completions", alias="AI_CHAT_PATH")
+    ai_auth_header: str = Field(default="Authorization", alias="AI_AUTH_HEADER")
+    ai_auth_scheme: str = Field(default="Bearer", alias="AI_AUTH_SCHEME")
+    ai_max_tokens: int = Field(default=700, ge=64, le=4000, alias="AI_MAX_TOKENS")
+
+    # Employee copilot access control.
+    # EMPLOYEE_TOKENS = "token:employee_id:role,..." with role service_agent | sales_agent | marketing | admin.
+    employee_tokens: SecretStr | None = Field(default=None, alias="EMPLOYEE_TOKENS")
+    # Local development only: accept X-Employee-Id / X-Employee-Role headers without a token.
+    allow_dev_auth: bool = Field(default=False, alias="ALLOW_DEV_AUTH")
+    # Also require an employee token on the older customer/marketing/AI endpoints (off for compatibility).
+    protect_customer_endpoints: bool = Field(default=False, alias="PROTECT_CUSTOMER_ENDPOINTS")
+    copilot_history_messages: int = Field(default=6, ge=0, le=20, alias="COPILOT_HISTORY_MESSAGES")
+    copilot_max_turns: int = Field(default=40, ge=1, le=200, alias="COPILOT_MAX_TURNS")
 
     @property
     def workbook_path(self) -> Path:

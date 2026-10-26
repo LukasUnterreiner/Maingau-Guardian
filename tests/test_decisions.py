@@ -26,9 +26,9 @@ def test_open_complaint_never_gets_sales_offer(portfolio):
                 assert "OPEN_COMPLAINT_BLOCKS_MARKETING" in c.eligibility.exclusion_codes
 
 
-def test_mg_100004_service_case(guardian):
+def test_mg_100004_service_case(lighty):
     """Known customer with documented service issues."""
-    r = guardian.recommend("MG-100004")
+    r = lighty.recommend("MG-100004")
     assert r["recommended_action"] == "P-SV-01"
     assert r["action_type"] == "service"
     assert r["channel"] == "service_call"  # customer asked for a callback on 2026-10-01
@@ -61,10 +61,10 @@ def test_customers_without_any_marketing_consent_get_no_marketing(portfolio):
 
 
 # 3 ---------------------------------------------------------------------------
-def test_withdrawn_consent_overrides_history(guardian):
+def test_withdrawn_consent_overrides_history(lighty):
     """MG-100003 withdraws profiling + newsletter consent on 2026-10-01 10:14 (event stream)."""
-    before = guardian.engine.decide("MG-100003", datetime(2026, 10, 1, 10, 0), guardian.settings)
-    after = guardian.engine.decide("MG-100003", datetime(2026, 10, 1, 10, 15), guardian.settings)
+    before = lighty.engine.decide("MG-100003", datetime(2026, 10, 1, 10, 0), lighty.settings)
+    after = lighty.engine.decide("MG-100003", datetime(2026, 10, 1, 10, 15), lighty.settings)
     assert before.state.consents["profiling_analytics"].status == "granted"
     assert any(c.valuation.action_type in MARKETING_ACTION_TYPES for c in before.ranked)
     assert after.state.consents["profiling_analytics"].status == "withdrawn"
@@ -74,14 +74,14 @@ def test_withdrawn_consent_overrides_history(guardian):
     assert not _marketing(after)
 
 
-def test_unsubscribe_link_withdrawal_is_respected(guardian):
-    for d in guardian.portfolio():
+def test_unsubscribe_link_withdrawal_is_respected(lighty):
+    for d in lighty.portfolio():
         if d.state.newsletter["unsubscribed"]:
             assert not d.state.consents["newsletter_email"].granted, d.customer_id
 
 
 # 4 ---------------------------------------------------------------------------
-def test_cross_selling_for_healthy_customer(portfolio, guardian):
+def test_cross_selling_for_healthy_customer(portfolio, lighty):
     healthy = [d for d in portfolio if d.recommended and d.recommended.valuation.action_type in ("sales", "upsell")
                and not d.state.has_service_issue]
     assert healthy, "expected at least one healthy cross-sell customer in the dataset"
@@ -116,8 +116,8 @@ def test_negative_value_never_outranks_no_contact(portfolio):
     assert any(d.recommended is None and d.ranked for d in portfolio), "expected customers whose options are all negative"
 
 
-def test_required_service_workflow_takes_precedence(guardian):
-    d = guardian.engine.decide("MG-100004", guardian.default_as_of, guardian.settings,
+def test_required_service_workflow_takes_precedence(lighty):
+    d = lighty.engine.decide("MG-100004", lighty.default_as_of, lighty.settings,
                                ScenarioParams(), POverrides(by_product={"P-SV-01": 0.0}))
     assert d.recommended.product_id == "P-SV-01"
     assert d.recommended.dclv < 0
@@ -125,30 +125,30 @@ def test_required_service_workflow_takes_precedence(guardian):
 
 
 # 8 ---------------------------------------------------------------------------
-def test_simulation_recalculates_correctly(guardian):
-    base = guardian.engine.decide("MG-100004", guardian.default_as_of, guardian.settings)
+def test_simulation_recalculates_correctly(lighty):
+    base = lighty.engine.decide("MG-100004", lighty.default_as_of, lighty.settings)
     p = base.recommended.p_used
-    sim = guardian.simulate("MG-100004", ScenarioParams(service_resolution_cost_eur=35.0), POverrides(), None, None)
+    sim = lighty.simulate("MG-100004", ScenarioParams(service_resolution_cost_eur=35.0), POverrides(), None, None)
     # dCLV falls by p * (35 - 15) exactly
     assert sim["scenario"]["expected_dclv_eur"] == pytest.approx(base.expected_dclv - p * 20.0, abs=0.01)
     assert sim["parameter_attribution"][0]["parameter"] == "service_resolution_cost_eur"
-    sim2 = guardian.simulate("MG-100004", ScenarioParams(), POverrides(by_product={"P-SV-01": 0.0}), None, None)
+    sim2 = lighty.simulate("MG-100004", ScenarioParams(), POverrides(by_product={"P-SV-01": 0.0}), None, None)
     assert sim2["scenario"]["expected_dclv_eur"] == pytest.approx(-6.0)  # only the call cost remains
 
 
-def test_simulation_can_flip_the_recommendation(guardian, portfolio):
+def test_simulation_can_flip_the_recommendation(lighty, portfolio):
     d = next(d for d in portfolio if d.recommended and d.recommended.valuation.action_type == "sales"
              and len(d.ranked) >= 2)
     top = d.recommended_product
-    sim = guardian.simulate(d.customer_id, ScenarioParams(), POverrides(by_product={top: 0.0}), None, None)
+    sim = lighty.simulate(d.customer_id, ScenarioParams(), POverrides(by_product={top: 0.0}), None, None)
     assert sim["recommendation_changed"] is True
     attr = sim["parameter_attribution"][0]
     assert attr["changes_recommendation"] is True and attr["delta_eur"] < 0
 
 
 # 11 --------------------------------------------------------------------------
-def test_prohibited_actions_stay_blocked_under_any_simulation(guardian):
-    sim = guardian.simulate("MG-100004",
+def test_prohibited_actions_stay_blocked_under_any_simulation(lighty):
+    sim = lighty.simulate("MG-100004",
                             ScenarioParams(churn_now_override=0.9, contact_cost_overrides={"app_push": 0.0},
                                            contact_during_service_case=0.0),
                             POverrides(by_product={"P-MO-01": 1.0, "P-IN-01": 1.0}, multiplier=10.0), None, None)
@@ -161,9 +161,9 @@ def test_prohibited_actions_stay_blocked_under_any_simulation(guardian):
 
 
 # 12 --------------------------------------------------------------------------
-def test_decision_records_contain_reasons_and_inputs(guardian):
-    r = guardian.recommend("MG-100004")
-    row = guardian.log.get(r["decision_id"])
+def test_decision_records_contain_reasons_and_inputs(lighty):
+    r = lighty.recommend("MG-100004")
+    row = lighty.log.get(r["decision_id"])
     rec = row["record"]
     assert rec["reason"] and "churn" in rec["reason"]
     inputs = rec["inputs"]
@@ -174,23 +174,23 @@ def test_decision_records_contain_reasons_and_inputs(guardian):
     assert row["approval_status"] == "pending_approval"
 
 
-def test_decisions_are_deterministic(guardian):
-    a = guardian.engine.decide("MG-100002", guardian.default_as_of, guardian.settings)
-    b = guardian.engine.decide("MG-100002", guardian.default_as_of, guardian.settings)
+def test_decisions_are_deterministic(lighty):
+    a = lighty.engine.decide("MG-100002", lighty.default_as_of, lighty.settings)
+    b = lighty.engine.decide("MG-100002", lighty.default_as_of, lighty.settings)
     assert a.decision_id == b.decision_id
     assert a.expected_dclv == b.expected_dclv
 
 
-def test_customer_initiated_tariff_inquiry_is_service_process(guardian):
+def test_customer_initiated_tariff_inquiry_is_service_process(lighty):
     """MG-100006 asked for a retention offer by phone on 2026-10-01."""
-    r = guardian.recommend("MG-100006")
+    r = lighty.recommend("MG-100006")
     assert r["recommended_action"] == "P-EN-02"
     assert r["process"] == "customer_inquiry_reply"
     assert r["channel"] == "service_call"
     assert r["requires_human_approval"] is True
 
 
-def test_frequency_limit_blocks_marketing(guardian, portfolio):
+def test_frequency_limit_blocks_marketing(lighty, portfolio):
     limited = [d for d in portfolio if any("CONTACT_FREQUENCY_LIMIT" in c.eligibility.exclusion_codes
                                            for c in d.all_candidates)]
     assert limited

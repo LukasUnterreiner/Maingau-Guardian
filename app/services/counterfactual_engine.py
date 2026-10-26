@@ -86,15 +86,16 @@ class CounterfactualEngine:
             })
 
         # Strategy comparison under the scenario
-        guardian_value = scen.expected_dclv
+        lighty_value = scen.expected_dclv
         strategies = []
         for row in self._ranking(scen):
-            strategies.append({**row, "difference_to_recommended_eur": _r(row["expected_dclv_eur"] - guardian_value)})
+            strategies.append({**row, "difference_to_recommended_eur": _r(row["expected_dclv_eur"] - lighty_value)})
         illustrative = [{"product_id": c.product_id, "channel": c.channel, "expected_dclv_eur": _r(c.dclv),
                          "exclusion_reasons": c.eligibility.exclusion_codes, "executable": False,
                          "label": "illustrative, non-executable"} for c in scen.blocked]
 
         base_line = eng.baseline(scen, baseline_policy)
+        executable = bool(base_line and base_line.eligibility.allowed)
         baseline_value = base_line.dclv if base_line else 0.0
 
         # Integrity check: blocked set is identical between base and scenario
@@ -126,9 +127,10 @@ class CounterfactualEngine:
                 "policy": baseline_policy,
                 "action": base_line.product_id if base_line else NO_CONTACT,
                 "channel": base_line.channel if base_line else "none",
-                "executable_under_guardian_rules": bool(base_line and base_line.eligibility.allowed),
+                "executable_under_lighty_rules": executable,
+                "executable_under_guardian_rules": executable,  # deprecated alias (renamed to Lighty)
                 "expected_dclv_eur": _r(baseline_value),
-                "projected_protected_value_eur": _r(guardian_value - baseline_value),
+                "projected_protected_value_eur": _r(lighty_value - baseline_value),
             },
             "value_label": "simulated (model-based estimate; not realised savings or proven causal uplift)",
         }

@@ -7,7 +7,7 @@ from app.config.settings import AppSettings
 from app.data.loader import load_dataset
 from app.main import create_app
 from app.services.decision_log import DecisionLog
-from app.services.guardian import Guardian
+from app.services.lighty import Lighty
 
 
 @pytest.fixture(scope="session")
@@ -22,22 +22,35 @@ def dataset(settings):
 
 
 @pytest.fixture(scope="session")
-def guardian(settings, dataset) -> Guardian:
-    return Guardian(settings, dataset=dataset)
+def lighty(settings, dataset) -> Lighty:
+    return Lighty(settings, dataset=dataset)
 
 
 @pytest.fixture(scope="session")
-def portfolio(guardian):
-    return guardian.portfolio()
+def portfolio(lighty):
+    return lighty.portfolio()
 
 
 @pytest.fixture()
-def fresh_guardian(settings, dataset, tmp_path) -> Guardian:
-    """Guardian with its own SQLite file, for tests that change settings or approvals."""
-    return Guardian(settings, dataset=dataset, decision_log=DecisionLog(tmp_path / "g.sqlite3"))
+def fresh_lighty(settings, dataset, tmp_path) -> Lighty:
+    """Lighty with its own SQLite file, for tests that change settings or approvals."""
+    return Lighty(settings, dataset=dataset, decision_log=DecisionLog(tmp_path / "g.sqlite3"))
 
 
 @pytest.fixture()
-def client(settings, fresh_guardian):
-    with TestClient(create_app(settings, fresh_guardian)) as c:
+def client(settings, fresh_lighty):
+    with TestClient(create_app(settings, fresh_lighty)) as c:
+        yield c
+
+
+@pytest.fixture(scope="session")
+def copilot_settings(settings) -> AppSettings:
+    """Dev auth (X-Employee-Id / X-Employee-Role headers) and no startup warm-up, for fast copilot API tests."""
+    return settings.model_copy(update={"allow_dev_auth": True, "warm_portfolio_on_startup": False})
+
+
+@pytest.fixture()
+def copilot_client(copilot_settings, dataset, tmp_path):
+    lt = Lighty(copilot_settings, dataset=dataset, decision_log=DecisionLog(tmp_path / "c.sqlite3"))
+    with TestClient(create_app(copilot_settings, lt)) as c:
         yield c

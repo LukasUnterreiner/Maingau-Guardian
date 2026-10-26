@@ -96,11 +96,12 @@ class AnalyticsService:
                 "policy": baseline_policy,
                 "total_expected_dclv_eur": _r(total_baseline),
                 "action_distribution": dict(baseline_actions.most_common()),
-                "baseline_actions_blocked_by_guardian_rules": baseline_blocked,
+                "baseline_actions_blocked_by_lighty_rules": baseline_blocked,
+                "baseline_actions_blocked_by_guardian_rules": baseline_blocked,  # deprecated alias
             },
             "projected_protected_customer_value_eur": _r(total_dclv - total_baseline),
             "projected_protected_customer_value_label":
-                "Model-based estimate: expected CLV under Guardian minus expected CLV under the baseline policy. "
+                "Model-based estimate: expected CLV under Lighty minus expected CLV under the baseline policy. "
                 "Not realised savings and not proven causal uplift.",
             "value_by_segment": {k: {kk: _r(vv) if isinstance(vv, float) else vv for kk, vv in v.items()}
                                  for k, v in sorted(seg_val.items())},

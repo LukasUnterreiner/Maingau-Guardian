@@ -26,6 +26,7 @@ class HealthResponse(BaseModel):
     ai: dict[str, Any]
     data_quality: dict[str, Any]
     acceptance_model: dict[str, Any]
+    employee_auth: dict[str, Any] = {}
 
 
 # --------------------------------------------------------------- customers

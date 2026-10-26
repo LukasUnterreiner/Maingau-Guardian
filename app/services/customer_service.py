@@ -40,6 +40,9 @@ SHOP_PRODUCT_NAMES = {  # product_catalog product_id -> shop_orders.product_name
     "P-SH-04": "Smart Plug 4er-Set",
 }
 ACTIVE_ENERGY_STATUSES = {"active", "cancellation_pending"}
+# shop_orders.product_category 'e_mobility' (Wallbox 11 kW, Ladekabel Typ 2); event orders carry only the name.
+EV_SHOP_PRODUCT_NAMES = ("Wallbox 11 kW", "Ladekabel Typ 2")
+KEPT_ORDER_STATUSES = {"delivered", "placed"}
 
 
 @dataclass
@@ -326,7 +329,7 @@ class CustomerService:
                 "ticket_id": p.get("ticket_id") or f"EV-{ev.event_id[:8]}", "customer_id": ev.customer_id,
                 "created_at": ev.occurred_at, "channel": p.get("channel"), "category": p.get("category"),
                 "message_text": p.get("message_text"), "call_note": p.get("note"), "status": "open",
-                "resolved_at": None, "csat_1to5": None, "source": "event_stream"})
+                "resolved_at": None, "csat_1to5": None, "source": "event_stream", "event_id": ev.event_id})
             if p.get("message_text"):
                 texts.append(p["message_text"])
             return True
@@ -341,6 +344,7 @@ class CustomerService:
                     x["status"] = p["status"]
                 if p.get("note"):
                     x["latest_note"] = p["note"]
+                    x["latest_note_event_id"] = ev.event_id
             if p.get("note"):
                 notes.append(f"Ticket update: {p['note']}")
             return True
@@ -348,7 +352,7 @@ class CustomerService:
             sessions.append({"session_id": f"EV-{ev.event_id[:8]}", "started_at": ev.occurred_at,
                              "session_status": "failed", "failure_reason": p.get("failure_reason"),
                              "charge_type": p.get("charge_type"), "cdr_received_at": ev.ingested_at,
-                             "source": "event_stream"})
+                             "source": "event_stream", "event_id": ev.event_id})
             return True
         elif t == "call_transcript_ready":
             if p.get("transcript"):
@@ -357,7 +361,7 @@ class CustomerService:
         elif t == "order_placed":
             orders.append({"order_id": f"EV-{ev.event_id[:8]}", "order_created_at": ev.occurred_at,
                            "product_name": p.get("product_name"), "order_status": "placed",
-                           "source": "event_stream"})
+                           "source": "event_stream", "event_id": ev.event_id})
             return True
         elif t == "cart_abandoned":
             signals["cart_abandoned"].append(p.get("product_name"))
@@ -452,8 +456,11 @@ class CustomerService:
         dev_types = {d.get("device_type") for d in s.hems_devices}
         active_energy = [c for c in s.energy_contracts if c.get("status") in ACTIVE_ENERGY_STATUSES]
         tel = s.telemetry
+        ev_orders = [o for o in s.shop_orders if o.get("order_status") in KEPT_ORDER_STATUSES
+                     and (o.get("product_category") == "e_mobility"
+                          or (o.get("product_name") or "").startswith(EV_SHOP_PRODUCT_NAMES))]
         ev_signal = bool(any(a.get("status") == "active" for a in s.autostrom_contracts)
-                         or "wallbox" in dev_types or (tel.get("ev_charging_kwh") or 0) > 0)
+                         or "wallbox" in dev_types or (tel.get("ev_charging_kwh") or 0) > 0 or ev_orders)
         failed_30d = [x for x in s.charge_sessions if x.get("session_status") == "failed" and x.get("started_at")
                       and s.as_of - timedelta(days=30) < x["started_at"] <= s.as_of]
         return {
@@ -470,6 +477,7 @@ class CustomerService:
             "hems_gateway": "hems_gateway" in dev_types,
             "home_battery": "home_battery" in dev_types,
             "wallbox_device": "wallbox" in dev_types,
+            "ev_shop_orders": sorted(o.get("order_id") for o in ev_orders),
             "hems_offline_devices": sorted(d.get("device_type") for d in s.hems_devices
                                            if d.get("connection_status") == "offline"),
             "failed_charges_30d": len(failed_30d),
@@ -489,7 +497,7 @@ class CustomerService:
         mobile = [m for m in s.mobile_contracts if m.get("status") == "active"]
         owned_shop = set()
         for o in s.shop_orders:
-            if o.get("order_status") in ("delivered", "placed"):
+            if o.get("order_status") in KEPT_ORDER_STATUSES:
                 for pid, name in SHOP_PRODUCT_NAMES.items():
                     if (o.get("product_name") or "").startswith(name):
                         owned_shop.add(pid)

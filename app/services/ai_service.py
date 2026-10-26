@@ -1,4 +1,4 @@
-"""Optional LLM integration for explanations and German customer drafts.
+"""Lighty: optional LLM integration for explanations and German customer drafts.
 
 Safeguards
 ----------
@@ -14,10 +14,8 @@ Safeguards
 
 Protocol
 --------
-The provider protocol has not been verified against hessian.AI documentation.
-``AI_PROTOCOL=openai_chat_completions`` (POST {AI_BASE_URL}/chat/completions with
-a Bearer token) is implemented because many hosted gateways expose it; any
-other value disables the call and the fallback is used. Verify before enabling.
+The wire format lives in ``llm_client.LLMClient`` and has not been verified
+against hessian.AI documentation. See that module before enabling.
 """
 from __future__ import annotations
 
@@ -26,11 +24,10 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
-
 from app.config.settings import AppSettings
+from app.services.llm_client import ChatModel, LLMClient, LLMUnavailable
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("lighty.ai")
 
 URGENCY_PATTERNS = [r"nur heute", r"nur noch", r"letzte chance", r"sofort", r"jetzt zugreifen", r"begrenzt",
                     r"läuft ab", r"schnell sein", r"bis morgen", r"exklusiv für sie", r"exklusiv für dich",
@@ -71,32 +68,27 @@ class AIResult:
 
 
 class AIService:
-    def __init__(self, settings: AppSettings):
+    def __init__(self, settings: AppSettings, llm: ChatModel | None = None):
         self.settings = settings
+        self.llm = llm or LLMClient(settings)
 
     @property
     def enabled(self) -> bool:
-        return self.settings.ai_configured and self.settings.ai_protocol == "openai_chat_completions"
+        return bool(self.llm.enabled)
 
     def status(self) -> dict[str, Any]:
-        return {"configured": self.settings.ai_configured, "protocol": self.settings.ai_protocol,
-                "enabled": self.enabled, "model": self.settings.ai_model if self.settings.ai_configured else None}
+        if isinstance(self.llm, LLMClient):
+            return self.llm.status()
+        return {"configured": True, "protocol": "custom", "enabled": self.enabled, "protocol_verified": False,
+                "model": None}
 
     # ------------------------------------------------------------- LLM call
     def _call(self, system: str, user: str, max_tokens: int = 400) -> str:
-        if not self.enabled:
-            raise RuntimeError("AI integration not configured")
-        url = self.settings.ai_base_url.rstrip("/") + "/chat/completions"
-        headers = {"Authorization": f"Bearer {self.settings.ai_api_key.get_secret_value()}"}
-        body = {"model": self.settings.ai_model, "temperature": 0.2, "max_tokens": max_tokens,
-                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
         try:
-            resp = httpx.post(url, json=body, headers=headers, timeout=self.settings.ai_timeout_s)
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
-        except Exception as exc:  # never include headers (key) in the log
-            log.warning("AI call failed: %s", type(exc).__name__)
-            raise RuntimeError(f"AI call failed: {type(exc).__name__}") from None
+            return self.llm.complete([{"role": "system", "content": system}, {"role": "user", "content": user}],
+                                     max_tokens=max_tokens)
+        except LLMUnavailable as exc:
+            raise RuntimeError(str(exc)) from None
 
     # ---------------------------------------------------------- explanation
     @staticmethod
@@ -134,7 +126,8 @@ class AIService:
         fallback = resp["reason"]
         if not self.enabled:
             return AIResult(fallback, None, "template_fallback", {"passed": True}, "AI not configured")
-        system = ("You explain decisions of a customer-value engine to marketing staff. Use ONLY the facts given. "
+        system = ("You are Lighty, an internal assistant that explains decisions of MAINGAU's customer-value "
+                  "engine to staff. Use ONLY the facts given. "
                   "Do not add numbers, probabilities, customer facts or recommendations that are not in the facts. "
                   "Two to three sentences, plain English.")
         try:
