@@ -5,8 +5,10 @@ HTML with SVG icons goes through st.markdown (st.html strips SVG); single-line s
 """
 from __future__ import annotations
 
+import base64
 import html
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -47,6 +49,9 @@ ICON = {
     "users": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
 }
 MAX_BLOCKED = 4   # blocked options shown per customer, highest value first
+# the Lighty bulb as a data URI, for <img> tags inside st.html / st.markdown
+BULB = "data:image/svg+xml;base64," + base64.b64encode(
+    (Path(__file__).resolve().parent / "static" / "lighty-bulb.svg").read_bytes()).decode()
 SPARK = ('<svg viewBox="0 0 24 24" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 '
          '5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 '
          '0 0 1-1.3-1.3Z"/></svg>')
@@ -491,7 +496,7 @@ def lighty_answer(resp: dict) -> str:
     other = [w for w in resp.get("warnings", []) if w.get("code") != "sales_restricted"]
     notes = "".join(f'<div class="lt-caption" title="{esc(w.get("message"))}">'
                     f'{esc(WARNING_TEXT.get(w.get("code"), w.get("message")))}</div>' for w in other)
-    out = [f'<div class="lt-msg-lighty"><div class="lt-row" style="gap: 8px;"><span class="lt-answer__mark">{SPARK}</span>'
+    out = [f'<div class="lt-msg-lighty"><div class="lt-row" style="gap: 8px;"><span class="lt-answer__mark"><img src="{BULB}" alt=""></span>'
            f'<strong>Lighty</strong>{chip}</div>{body}</div>']
     if chips:
         out.append('<div class="lt-stack" style="gap: 6px;"><span class="lt-label">Based on</span>'

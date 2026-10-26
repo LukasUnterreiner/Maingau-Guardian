@@ -26,9 +26,9 @@
 .lt-answer { display: flex; flex-direction: column; gap: 18px; padding: 18px 18px 16px; background: var(--lt-sunken);
              border: 1px solid var(--lt-line); border-radius: 20px; }
 .lt-answer .lt-msg-lighty { gap: 12px; }
-.lt-answer__mark { width: 26px; height: 26px; border-radius: 999px; background: var(--lt-night); display: inline-flex;
-                   align-items: center; justify-content: center; flex-shrink: 0; }
-.lt-answer__mark svg { width: 14px; height: 14px; fill: var(--lt-spark); stroke: var(--lt-spark); }
+.lt-answer__mark { width: 28px; height: 28px; border-radius: 999px; background: var(--lt-surface); border: 1px solid var(--lt-line);
+                   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.lt-answer__mark img { height: 19px; width: auto; }
 
 /* the German wording box: copy only, never send */
 [class*="st-key-suggestion-"] { gap: 6px; padding: 16px; border: 1px solid var(--lt-primary-tint-line);

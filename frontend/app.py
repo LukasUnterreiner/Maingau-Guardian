@@ -42,7 +42,8 @@ def sign_in_page() -> None:
         st.stop()
     _, mid, _ = st.columns([1, 1.3, 1])
     with mid, st.container(border=True, key="sign-in"):
-        st.html('<div class="lt-stack" style="gap: 6px;"><span class="lt-label">Lighty · MAINGAU Energie</span>'
+        st.html(f'<div class="lt-stack" style="gap: 6px;"><img src="{ui.BULB}" alt="Lighty" style="height: 64px; '
+                'width: auto; align-self: flex-start; margin-bottom: 6px;"><span class="lt-label">Lighty · MAINGAU Energie</span>'
                 '<h1 class="lt-h1">Smarter decisions. Better conversations.</h1>'
                 '<p class="lt-body">Sign in with your employee token to see today\'s decisions and ask Lighty about a '
                 'customer.</p></div>')
