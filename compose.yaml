@@ -1,0 +1,32 @@
+# VM port 80 -> container port 8000. External access: port 38080 is forwarded to VM port 80.
+services:
+  guardian:
+    build: .
+    image: maingau-guardian:latest
+    container_name: maingau-guardian
+    restart: unless-stopped
+    ports:
+      - "80:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATA_DIR: /srv/data
+      RUNTIME_DIR: /srv/runtime
+    volumes:
+      - ./data:/srv/data:ro
+      - guardian-runtime:/srv/runtime
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+
+volumes:
+  guardian-runtime:
