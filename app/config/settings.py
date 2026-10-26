@@ -45,6 +45,10 @@ class AppSettings(BaseSettings):
     ai_model: str | None = Field(default=None, alias="AI_MODEL")
     ai_protocol: str = Field(default="openai_chat_completions", alias="AI_PROTOCOL")
     ai_timeout_s: float = Field(default=20.0, alias="AI_TIMEOUT_S")
+    # A gateway that cannot be reached should not hold every request for AI_TIMEOUT_S.
+    ai_connect_timeout_s: float = Field(default=5.0, ge=0.5, le=60, alias="AI_CONNECT_TIMEOUT_S")
+    # After a network failure, skip AI calls for this long and answer deterministically right away.
+    ai_cooldown_s: float = Field(default=120.0, ge=0, le=3600, alias="AI_COOLDOWN_S")
     # Request format details, so a gateway can be adapted without code changes once its docs are checked.
     ai_chat_path: str = Field(default="/chat/completions", alias="AI_CHAT_PATH")
     ai_auth_header: str = Field(default="Authorization", alias="AI_AUTH_HEADER")

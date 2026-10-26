@@ -81,7 +81,7 @@ development environment (the gateway was not reachable from there), so test it o
 pytest -q
 ```
 
-95 tests:
+96 tests:
 
 * Engine (43): the 12 mandatory scenarios of the brief, the MG‑100004 service case, a dataset-wide check that the
   CLV formula and all churn drivers reproduce `customer_value`, API contract/error tests and an unreachable-AI test.
@@ -90,10 +90,10 @@ pytest -q
   invalid ids, unavailable or misbehaving LLM, conversation isolation, authorisation, no cross-customer leakage,
   prompt injection in customer text and safe output formatting. Test customers are picked from the dataset by their
   situation, not hard-coded.
-* LLM client (8, `tests/test_llm_client.py`): request format of the hessian.AI gateway, removal of reasoning
-  blocks, failures without leaking the key.
+* LLM client (9, `tests/test_llm_client.py`): request format of the hessian.AI gateway, removal of reasoning
+  blocks, failures without leaking the key, pause after network errors.
 
-Last run: **95 passed** (Python 3.13 local).
+Last run: **96 passed** (Python 3.13 local).
 
 ## Docker
 
@@ -138,6 +138,7 @@ See [`.env.example`](.env.example). Important variables:
 | `AI_PROTOCOL` | `openai_chat_completions` | Only protocol implemented — verify against the provider docs first |
 | `AI_CHAT_PATH`, `AI_AUTH_HEADER`, `AI_AUTH_SCHEME` | `/chat/completions`, `Authorization`, `Bearer` | Request format details, adjustable once the provider docs are checked |
 | `AI_TIMEOUT_S`, `AI_MAX_TOKENS` | `20`, `700` | LLM call limits |
+| `AI_CONNECT_TIMEOUT_S`, `AI_COOLDOWN_S` | `5`, `120` | If the gateway cannot be reached, stop trying after 5 s and answer deterministically for the next 2 minutes |
 | `WARM_PORTFOLIO_ON_STARTUP` | `true` | Pre-compute all decisions at startup |
 
 ## Project structure

@@ -124,7 +124,7 @@ All errors share one shape:
   "snapshot_at": "2026-09-30 23:59:59",
   "default_as_of": "2026-10-02 02:03:52",
   "settings_version": 0,
-  "ai": { "configured": false, "protocol": "openai_chat_completions", "enabled": false, "protocol_verified": false, "model": null },
+  "ai": { "configured": false, "protocol": "openai_chat_completions", "enabled": false, "protocol_verified": false, "model": null, "paused_after_network_error_s": 0 },
   "employee_auth": { "mode": "dev", "protect_customer_endpoints": false },
   "data_quality": { "sheets": { "customer_master": { "rows": 750, "exact_duplicates_dropped": 0, "rows_without_customer_id": 0 }, "…": {} },
                     "event_stream": { "lines": 647, "duplicates_dropped": 12, "invalid_dropped": 0, "events_loaded": 635, "events_for_unknown_customers": 0 } },
@@ -824,7 +824,9 @@ first request after a restart can take a few seconds while the engine warms up).
 request can take up to `AI_TIMEOUT_S` (default 20 s) plus processing; show the typing indicator, and after about
 5 seconds a hint such as "Lighty formuliert die Antwort…". Use a client timeout a bit above `AI_TIMEOUT_S` (e.g.
 30 s). On a client timeout, offer "retry"; the server falls back to the deterministic answer on its own if the model
-fails, so a retry normally succeeds.
+fails, so a retry normally succeeds. If the AI gateway cannot be reached, one request waits at most
+`AI_CONNECT_TIMEOUT_S` (5 s) and the following requests answer deterministically right away for `AI_COOLDOWN_S`
+(2 minutes); `GET /api/health` → `ai.paused_after_network_error_s` shows the remaining pause.
 
 **Rendering one answer.**
 
@@ -896,7 +898,7 @@ quoted with their label), and do not show facts of another customer in the same 
 | EV signal | The EV signal now also counts kept e-mobility shop orders (`Wallbox 11 kW`, `Ladekabel Typ 2`). New signal `ev_shop_orders` (order ids). Eligible options rose from 1693 to 1729; overview totals are unchanged. | Additive. |
 | Event ids | Event-derived tickets, charge sessions and orders carry `event_id`; ticket updates carry `latest_note_event_id`. | Additive. |
 | New endpoints | Copilot chat, briefing, context, conversations, suggested questions, me (§4.12–4.18). | Additive. |
-| Health | New `employee_auth` (`mode`, `protect_customer_endpoints`); `ai` adds `protocol_verified` (`true` for the documented hessian.AI gateway). | Additive. |
+| Health | New `employee_auth` (`mode`, `protect_customer_endpoints`); `ai` adds `protocol_verified` (`true` for the documented hessian.AI gateway) and `paused_after_network_error_s`. | Additive. |
 | Employee auth | New settings `EMPLOYEE_TOKENS`, `ALLOW_DEV_AUTH`, `PROTECT_CUSTOMER_ENDPOINTS` (default `false`, so existing endpoints stay open as before). | Opt-in. |
 | AI settings | New `AI_CHAT_PATH`, `AI_AUTH_HEADER`, `AI_AUTH_SCHEME`, `AI_MAX_TOKENS`; `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` unchanged. | Defaults match v1. |
 | SQLite file | Default `SQLITE_FILE` is `lighty.sqlite3` (was `guardian.sqlite3`). | Set `SQLITE_FILE=guardian.sqlite3` to keep using the old file. |

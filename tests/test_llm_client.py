@@ -68,3 +68,23 @@ def test_failures_raise_without_leaking_the_key(monkeypatch, caplog, resp):
     with caplog.at_level(logging.DEBUG), pytest.raises(LLMUnavailable) as err:
         LLMClient(_settings()).complete([{"role": "user", "content": "x"}])
     assert KEY not in str(err.value) and KEY not in caplog.text
+
+
+def test_network_failure_pauses_calls_and_uses_a_short_connect_timeout(monkeypatch):
+    calls = []
+
+    def unreachable(url, json, headers, timeout):
+        calls.append(timeout)
+        raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(httpx, "post", unreachable)
+    client = LLMClient(_settings(AI_CONNECT_TIMEOUT_S="3", AI_COOLDOWN_S="60"))
+    for _ in range(3):
+        with pytest.raises(LLMUnavailable):
+            client.complete([{"role": "user", "content": "x"}])
+    assert len(calls) == 1 and calls[0].connect == 3  # later calls fall back without waiting
+    assert client.status()["paused_after_network_error_s"] > 0
+
+    client._paused_until = 0  # pause over: the next call tries the gateway again
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _Resp(_reply("wieder da")))
+    assert client.complete([{"role": "user", "content": "x"}]) == "wieder da"
