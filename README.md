@@ -99,7 +99,8 @@ curl localhost/api/health
 ```
 
 * The app listens on `0.0.0.0:8000` inside the container; `compose.yaml` maps VM port 80 to it. On the
-  hessian.AI server the external port 38080 is forwarded to VM port 80.
+  hessian.AI workshop server (wsvm39) the external port 39080 is forwarded to VM port 80, so the API is at
+  `http://130.83.85.181:39080`. Per the server handout, clone the repo under `/srv` (e.g. `/srv/lighty`), the data disk.
 * Service, image, container and volume are named `lighty`. If the older `maingau-guardian` container runs on the
   same host, run `docker compose down` before updating the checkout (or `docker compose up -d --build
   --remove-orphans` afterwards), because both use port 80. The new volume starts with an empty decision log.

@@ -1,4 +1,4 @@
-# Lighty backend. VM port 80 -> container port 8000. External access: port 38080 is forwarded to VM port 80.
+# Lighty backend. VM port 80 -> container port 8000. External access on wsvm39: port 39080 is forwarded to VM port 80.
 services:
   lighty:
     build: .

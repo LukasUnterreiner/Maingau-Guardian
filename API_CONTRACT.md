@@ -14,7 +14,7 @@ All JSON examples below are real responses from the dataset (arrays shortened wi
 
 | Topic | Rule |
 |---|---|
-| Base URL | Local: `http://localhost:8000`. Server: `http://<host>:38080` (→ VM port 80 → container 8000). |
+| Base URL | Local: `http://localhost:8000`. Server (wsvm39): `http://130.83.85.181:39080` (→ VM port 80 → container 8000). |
 | Prefix | Every endpoint lives under `/api`. |
 | Content type | `application/json; charset=utf-8`. German text is UTF‑8. |
 | Money | `*_eur` fields are floats in EUR, rounded to 2 decimals. |
