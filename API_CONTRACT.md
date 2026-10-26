@@ -882,8 +882,9 @@ quoted with their label), and do not show facts of another customer in the same 
   the deterministic answer and reported in `warnings`.
 * **Isolation.** A conversation is bound to one employee and one customer; history is separate per conversation.
 * **AI protocol.** The client speaks the OpenAI-compatible chat-completions format (`AI_PROTOCOL`,
-  `AI_CHAT_PATH`, `AI_AUTH_HEADER`, `AI_AUTH_SCHEME`). It has not been verified against the hessian.AI gateway
-  documentation; `GET /api/health` → `ai.protocol_verified` stays `false` until it is.
+  `AI_CHAT_PATH`, `AI_AUTH_HEADER`, `AI_AUTH_SCHEME`). It matches the hessian.AI Inference API handout
+  (`https://hip-gw.hessian.ai/v1`, Bearer key, model `vllm/Kolibri-1`); `GET /api/health` → `ai.protocol_verified`
+  is `true` when `AI_BASE_URL` points to that gateway.
 
 ## 7. Changes in v1.1 (Lighty)
 
@@ -895,7 +896,7 @@ quoted with their label), and do not show facts of another customer in the same 
 | EV signal | The EV signal now also counts kept e-mobility shop orders (`Wallbox 11 kW`, `Ladekabel Typ 2`). New signal `ev_shop_orders` (order ids). Eligible options rose from 1693 to 1729; overview totals are unchanged. | Additive. |
 | Event ids | Event-derived tickets, charge sessions and orders carry `event_id`; ticket updates carry `latest_note_event_id`. | Additive. |
 | New endpoints | Copilot chat, briefing, context, conversations, suggested questions, me (§4.12–4.18). | Additive. |
-| Health | New `employee_auth` (`mode`, `protect_customer_endpoints`); `ai` adds `protocol_verified` (always `false` for now). | Additive. |
+| Health | New `employee_auth` (`mode`, `protect_customer_endpoints`); `ai` adds `protocol_verified` (`true` for the documented hessian.AI gateway). | Additive. |
 | Employee auth | New settings `EMPLOYEE_TOKENS`, `ALLOW_DEV_AUTH`, `PROTECT_CUSTOMER_ENDPOINTS` (default `false`, so existing endpoints stay open as before). | Opt-in. |
 | AI settings | New `AI_CHAT_PATH`, `AI_AUTH_HEADER`, `AI_AUTH_SCHEME`, `AI_MAX_TOKENS`; `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` unchanged. | Defaults match v1. |
 | SQLite file | Default `SQLITE_FILE` is `lighty.sqlite3` (was `guardian.sqlite3`). | Set `SQLITE_FILE=guardian.sqlite3` to keep using the old file. |

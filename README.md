@@ -70,8 +70,10 @@ filtered) → validate the output (cited facts, numbers, promises, markup, Du/Si
 action, suggested wording, facts, source references, warnings and uncertainty.
 
 Without an AI model, or when the model fails or its output does not pass validation, the copilot answers with the
-deterministic rules. The OpenAI-compatible request format has **not** been verified against the hessian.AI gateway
-documentation yet; check it before enabling `AI_*` on the server.
+deterministic rules. The request format was checked against the hessian.AI Inference API handout
+(`https://hip-gw.hessian.ai/v1`, `/chat/completions`, Bearer key, model `vllm/Kolibri-1`); `.env.example` is
+prefilled with these values, only `AI_API_KEY` has to be set on the server. A live call has not been made from the
+development environment (the gateway was not reachable from there), so test it once on the server.
 
 ## Tests
 
@@ -79,7 +81,7 @@ documentation yet; check it before enabling `AI_*` on the server.
 pytest -q
 ```
 
-87 tests:
+95 tests:
 
 * Engine (43): the 12 mandatory scenarios of the brief, the MG‑100004 service case, a dataset-wide check that the
   CLV formula and all churn drivers reproduce `customer_value`, API contract/error tests and an unreachable-AI test.
@@ -88,8 +90,10 @@ pytest -q
   invalid ids, unavailable or misbehaving LLM, conversation isolation, authorisation, no cross-customer leakage,
   prompt injection in customer text and safe output formatting. Test customers are picked from the dataset by their
   situation, not hard-coded.
+* LLM client (8, `tests/test_llm_client.py`): request format of the hessian.AI gateway, removal of reasoning
+  blocks, failures without leaking the key.
 
-Last run: **87 passed** (Python 3.13 local).
+Last run: **95 passed** (Python 3.13 local).
 
 ## Docker
 

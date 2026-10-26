@@ -14,8 +14,8 @@ Safeguards
 
 Protocol
 --------
-The wire format lives in ``llm_client.LLMClient`` and has not been verified
-against hessian.AI documentation. See that module before enabling.
+The wire format lives in ``llm_client.LLMClient`` (OpenAI-compatible chat
+completions, checked against the hessian.AI Inference API handout).
 """
 from __future__ import annotations
 

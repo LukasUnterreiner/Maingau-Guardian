@@ -148,7 +148,10 @@ approval still apply. p uses the offer-level history (conservative: history is u
 ## 8. AI
 
 * Optional; disabled unless `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` are set. Only an OpenAI-compatible
-  `/chat/completions` protocol is implemented and it is **not verified** against hessian.AI docs.
+  `/chat/completions` protocol is implemented. It matches the hessian.AI Inference API handout
+  (`https://hip-gw.hessian.ai/v1`, Bearer key, models `vllm/Kolibri-1` and `vllm/GLM-Flash:Latest`); a live call
+  still has to be made on the server, because the gateway was not reachable from the development environment.
+  Reasoning blocks (`<think>…</think>`) that vLLM models may prepend are removed before validation.
 * The model gets a minimal fact sheet (no name, birth year, address, contract ids) and only rephrases.
   Explanations may contain no numbers that are not in the facts; drafts may contain no numbers,
   prices, %, urgency, wrong Du/Sie. Failures → deterministic fallback. Drafts are stored as pending approval.
@@ -243,7 +246,8 @@ conversations; at most 40 turns (`COPILOT_MAX_TURNS`).
 **Copilot limitations.**
 
 * Intent detection is keyword-based: unusual phrasing falls back to a general answer with the core facts.
-* The LLM request format (OpenAI-compatible chat completions) is not verified against the hessian.AI gateway docs.
+* The LLM request format matches the hessian.AI handout, but no live call was possible from the development
+  environment; Kolibri-1's answers have not been evaluated yet (the validator rejects anything ungrounded).
 * The injection filter is pattern-based; it reduces risk but is not a proof. The second line of defence is that the
   LLM output is validated and the engine decision is never taken from the model.
 * Customer names, addresses and contact details are not in the dataset, so the copilot cannot answer them.
