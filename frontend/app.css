@@ -40,3 +40,9 @@
 [data-testid="stMarkdownContainer"] > .lt-grid, [data-testid="stMarkdownContainer"] > .lt-hero { margin: 8px 0 4px; }
 .lt-hero__stat-value { font-size: 26px; line-height: 1.1; }
 .stApp h2.lt-h3, .stApp h3.lt-h3 { font-size: 16px; line-height: 24px; font-weight: 600; padding: 0; margin: 0; letter-spacing: 0; }
+
+/* churn-risk banner on the cockpit */
+.st-key-risk-banner { background: var(--lt-resolve-tint); border: 1px solid #FBDDBC; border-radius: var(--lt-radius-md);
+                      padding: 6px 8px 6px 14px; color: var(--lt-resolve-text); }
+.st-key-risk-banner svg { width: 18px; height: 18px; flex-shrink: 0; }
+.st-key-risk-banner button p { color: var(--lt-resolve-text); font-weight: 700; }

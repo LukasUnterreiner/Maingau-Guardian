@@ -37,6 +37,9 @@ class CustomerSummary(BaseModel):
     business_lines: list[str]
     current_clv_eur: float
     churn_probability: float
+    churn_drivers: list[str] = []
+    clv_service_impact_reported_eur: float | None = None
+    cancellation_pending: bool = False
     has_service_issue: bool
     open_complaint: bool
     tonality: Literal["du", "sie"]
@@ -128,6 +131,9 @@ class RecommendationResponse(BaseModel):
     expected_dclv_eur: float
     estimated_clv_after_eur: float
     acceptance_probability: float | None
+    churn_now: float
+    churn_after_accept: float
+    churn_after_reject: float
     required_service_workflow: bool
     requires_human_approval: bool
     approval_status: Literal["not_required", "pending_approval", "approved", "rejected"]

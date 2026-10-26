@@ -83,6 +83,10 @@ live data from the backend:
 
 * **Cockpit**: KPI tiles from `/api/marketing/overview`, the most valuable decision waiting for review (with Approve /
   Reject), today's decision mix and contacts by channel.
+* **Churn risk**: the customers most likely to cancel (top quarter by 12-month churn risk), why (the churn
+  drivers), the customer value at stake if they leave (their CLV) and the CLV already lost to service problems
+  (`clv_service_impact_eur` from the data). Each customer page starts with the same churn card, including what
+  Lighty's recommended action does to the risk.
 * **Approval queue**: all decisions by status (pending, approved, rejected) with filters; select a row to see the
   full decision and approve or reject it.
 * **Customers**: Lighty's decision for one customer, the options it compared (blocked ones greyed out with their
@@ -107,7 +111,7 @@ LIGHTY_API_URL=http://localhost:8000 streamlit run app.py      # http://localhos
 On wsvm38 that is **`http://130.83.85.181:38443`** (plain HTTP on that port, type `http://`).
 
 Tested by hand in Chromium against the local backend: sign-in (wrong and right token), cockpit, approving a
-decision (flash message, pending count goes down), queue filters, row selection, customer page, two chat turns
+decision (flash message, pending count goes down), queue filters, row selection, churn-risk page and card, customer page, two chat turns
 and a phone-width view. There are no automated tests for the web app.
 
 ## Tests
@@ -116,9 +120,9 @@ and a phone-width view. There are no automated tests for the web app.
 pytest -q
 ```
 
-96 tests:
+97 tests:
 
-* Engine (43): the 12 mandatory scenarios of the brief, the MG‑100004 service case, a dataset-wide check that the
+* Engine (44): the 12 mandatory scenarios of the brief, the MG‑100004 service case, a dataset-wide check that the
   CLV formula and all churn drivers reproduce `customer_value`, API contract/error tests and an unreachable-AI test.
 * Copilot (44, `tests/test_copilot.py`): context building, personalised answers, unresolved issues, use of the
   engine decision, consent restrictions, cross-sell and retention, no fabricated values, missing information,
@@ -128,7 +132,7 @@ pytest -q
 * LLM client (9, `tests/test_llm_client.py`): request format of the hessian.AI gateway, removal of reasoning
   blocks, failures without leaking the key, pause after network errors.
 
-Last run: **96 passed** (Python 3.13 local).
+Last run: **97 passed** (Python 3.13 local).
 
 ## Docker
 

@@ -17,6 +17,17 @@ ui.html_block('<div class="lt-stack" style="gap: 8px;">'
               'best left alone today.</p></div>')
 ui.html_block(ui.kpi_tiles(ov))
 
+index = ui.load(ui.customer_index)
+levels = ui.risk_levels(index)
+at_risk = [c for c in index if (c.get("churn_probability") or 0) >= levels["high"]]
+with st.container(horizontal=True, vertical_alignment="center", key="risk-banner"):
+    st.html(f'<div class="lt-row" style="gap: 10px;">{ui.svg("alert")}<span><strong>{len(at_risk):,} customers are '
+            f'likely to cancel</strong> (≥ {ui.esc(ui.pct(levels["high"]))} churn risk in 12 months). '
+            f'{ui.esc(ui.eur(sum(c.get("current_clv_eur") or 0 for c in at_risk), decimals=0))} customer value is '
+            'at stake.</span></div>')
+    if st.button("Show churn risk", icon=":material/arrow_forward:", type="tertiary", key="to-risk"):
+        st.switch_page("views/risk.py")
+
 queue = ui.load(ui.decisions, "pending_approval")
 if queue:
     top = queue[0]   # the list is sorted by expected ΔCLV
@@ -43,6 +54,7 @@ with c2, st.container(border=True, key="card-channels"):
     fig = go.Figure(go.Bar(x=[v for _, v in ordered], y=[k for k, _ in ordered], orientation="h",
                            marker_color=theme.COLORS["primary"], hovertemplate="%{y}: %{x} contacts<extra></extra>"))
     fig.update_layout(**theme.plotly_layout(title="Recommended contacts by channel", height=320))
+    fig.update_yaxes(automargin=True)
     st.plotly_chart(fig, theme=None, config={"displayModeBar": False})
 
 st.caption(ov.get("projected_protected_customer_value_label", ""))

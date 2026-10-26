@@ -70,6 +70,17 @@ def test_recommendation_contract(client):
         assert b["executable"] is False and b["exclusion_reasons"]
 
 
+def test_churn_risk_fields_for_the_web_app(client):
+    """Churn before/after the recommended action and the dataset's service impact, used by the churn-risk views."""
+    rec = client.get("/api/customers/MG-100004/recommendations").json()
+    assert (rec["churn_now"], rec["churn_after_accept"]) == (0.38, 0.18)   # service drivers removed if resolved
+    assert rec["churn_after_reject"] == rec["churn_now"]
+    nc = next(c for c in client.get("/api/customers", params={"page_size": 200}).json()["items"]
+              if c["customer_id"] == "MG-100004")
+    assert nc["clv_service_impact_reported_eur"] == -357
+    assert set(nc["churn_drivers"]) == {"Open complaint", "Two or more tickets in 12 months", "Dunning level 2 or higher"}
+
+
 def test_simulate_validation(client):
     assert client.post("/api/customers/MG-100004/simulate",
                        json={"acceptance_probability_overrides": {"P-SV-01": 1.5}}).status_code == 422

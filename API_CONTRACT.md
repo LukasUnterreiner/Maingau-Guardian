@@ -139,11 +139,16 @@ All errors share one shape:
 
 Query: `page` (default 1), `page_size` (1–200, default 25), `business_line` (`energy|mobile|e_mobility|smart_living`), `has_service_issue` (bool), `search` (substring of the customer id), `as_of`.
 
+`churn_probability` is the live 12-month churn estimate, `churn_drivers` the labels of its active drivers,
+`clv_service_impact_reported_eur` the CLV effect of service cases as reported in `customer_value` (≤ 0, observed on the
+snapshot) and `cancellation_pending` whether a cancellation was received (churn 0.95).
+
 ```json
 {
   "items": [
     { "customer_id": "MG-100001", "city": "Köln", "customer_since": "2013-11-22 00:00:00", "business_lines": ["energy"],
-      "current_clv_eur": 261.36, "churn_probability": 0.18, "has_service_issue": false, "open_complaint": false, "tonality": "sie" }
+      "current_clv_eur": 261.36, "churn_probability": 0.18, "churn_drivers": [], "clv_service_impact_reported_eur": 0.0,
+      "cancellation_pending": false, "has_service_issue": false, "open_complaint": false, "tonality": "sie" }
   ],
   "page": 1, "page_size": 2, "total": 750, "total_pages": 375, "as_of": "2026-10-02 02:03:52"
 }
@@ -233,6 +238,7 @@ Query: `as_of`. Calling it logs the decision in SQLite (idempotent: same inputs 
 | `expected_dclv_eur` | float | Expected incremental CLV of the recommended action vs. no contact (0 for no contact). |
 | `estimated_clv_after_eur` | float | `current_clv_eur + expected_dclv_eur`. |
 | `acceptance_probability` | float\|null | p used (service: estimated resolution success). |
+| `churn_now` / `churn_after_accept` / `churn_after_reject` | float | 12-month churn now, and of the recommended action if it succeeds / fails (all three equal for no contact). |
 | `required_service_workflow` | bool | `true` if P‑SV‑01 was chosen because of an open complaint although its value is ≤ 0. |
 | `requires_human_approval` | bool | `true` for every external communication. |
 | `approval_status` | enum | See §3. |
@@ -282,6 +288,9 @@ Example — service case (MG‑100004):
   "expected_dclv_eur": 66.5,
   "estimated_clv_after_eur": 233.55,
   "acceptance_probability": 0.7105,
+  "churn_now": 0.38,
+  "churn_after_accept": 0.18,
+  "churn_after_reject": 0.38,
   "required_service_workflow": false,
   "requires_human_approval": true,
   "approval_status": "pending_approval",
@@ -902,4 +911,5 @@ quoted with their label), and do not show facts of another customer in the same 
 | Employee auth | New settings `EMPLOYEE_TOKENS`, `ALLOW_DEV_AUTH`, `PROTECT_CUSTOMER_ENDPOINTS` (default `false`, so existing endpoints stay open as before). | Opt-in. |
 | AI settings | New `AI_CHAT_PATH`, `AI_AUTH_HEADER`, `AI_AUTH_SCHEME`, `AI_MAX_TOKENS`; `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` unchanged. | Defaults match v1. |
 | SQLite file | Default `SQLITE_FILE` is `lighty.sqlite3` (was `guardian.sqlite3`). | Set `SQLITE_FILE=guardian.sqlite3` to keep using the old file. |
+| Churn fields | Customer list items add `churn_drivers`, `clv_service_impact_reported_eur`, `cancellation_pending`; recommendations add `churn_now`, `churn_after_accept`, `churn_after_reject`. | Additive. |
 | Docker | Service, image, container and volume are named `lighty`. Ports (`80:8000`) and `/srv` mounts are unchanged. | Stop the old `maingau-guardian` container before starting `lighty` (both use port 80). |

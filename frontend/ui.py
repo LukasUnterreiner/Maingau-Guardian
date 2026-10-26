@@ -41,6 +41,9 @@ ICON = {
     "lock": '<rect width="16" height="10" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     "alert": '<path d="m21.7 18-8-14a2 2 0 0 0-3.5 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     "info": '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    "door": '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+    "euro": '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
+    "users": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
 }
 MAX_BLOCKED = 4   # blocked options shown per customer, highest value first
 SPARK = ('<svg viewBox="0 0 24 24" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 '
@@ -125,6 +128,11 @@ def customer_index(token: str) -> list[dict]:
     for page in range(2, first.get("total_pages", 1) + 1):
         items += api.customers(token, page=page, page_size=200)["items"]
     return items
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def customer(token: str, customer_id: str) -> dict:
+    return api.customer(token, customer_id)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -346,3 +354,108 @@ def suggestion(resp: dict, key: str) -> None:
     with st.container(key=f"suggestion-{key}"):
         st.html(f'<span class="lt-suggestion__label">{label} · review before use</span>')
         st.code(msg["text"], language=None, wrap_lines=True)
+
+
+# ------------------------------------------------------------------ churn risk
+def risk_levels(index: list[dict]) -> dict:
+    """Portfolio view of churn risk: thresholds from the current churn of all customers (no new model).
+
+    High = the top quarter of customers by churn risk, medium = above the median.
+    """
+    values = sorted(c.get("churn_probability") or 0 for c in index)
+    n = len(values) or 1
+    return {"values": values, "high": values[int(0.75 * (n - 1))], "medium": values[int(0.5 * (n - 1))]}
+
+
+def risk_level(churn: float, levels: dict) -> str:
+    return "High" if churn >= levels["high"] else "Medium" if churn >= levels["medium"] else "Low"
+
+
+def share_below(churn: float, levels: dict) -> float:
+    values = levels["values"]
+    return sum(1 for v in values if v < churn) / (len(values) or 1)
+
+
+def risk_tiles(at_risk: list[dict], index: list[dict], levels: dict) -> str:
+    cancelled = [c for c in index if c.get("cancellation_pending")]
+    lost = sum(c.get("clv_service_impact_reported_eur") or 0 for c in index)
+
+    def tile(color, icon, label, value, note):
+        return (f'<div class="lt-kpi lt-kpi--{color}"><div class="lt-kpi__head"><span class="lt-kpi__icon">{svg(icon)}'
+                f'</span>{label}</div><span class="lt-kpi__value">{value}</span><div class="lt-kpi__note">{note}</div></div>')
+
+    return ('<div class="lt-grid" style="--lt-grid-min: 230px;">'
+            + tile("orange", "users", "Likely to cancel", esc(f"{len(at_risk):,}"),
+                   f"customers with ≥ {esc(pct(levels['high']))} churn risk in 12 months")
+            + tile("amber", "euro", "Customer value at stake",
+                   esc(eur(sum(c.get("current_clv_eur") or 0 for c in at_risk), decimals=0)),
+                   "lost if they cancel (their CLV) · Estimate")
+            + tile("blue", "wrench", "Already lost to service problems", esc(eur(lost, decimals=0)),
+                   "CLV reduced by service cases, all customers · from the data")
+            + tile("teal", "door", "Cancellations received", esc(f"{len(cancelled):,}"),
+                   "contract cancelled, churn risk 95%")
+            + "</div>")
+
+
+def risk_card(c360: dict, rec: dict, levels: dict) -> str:
+    """Churn prediction for one customer: risk, why, and what is at stake in money."""
+    value = c360.get("value") or {}
+    churn = value.get("churn_probability_now") or 0
+    clv = value.get("current_clv_eur")
+    impact = value.get("clv_service_impact_reported_eur")
+    level = risk_level(churn, levels)
+    color = {"High": "var(--lt-loss)", "Medium": "var(--lt-resolve-text)", "Low": "var(--lt-gain)"}[level]
+    cancelled = (c360.get("service") or {}).get("cancellation_pending")
+
+    base = c360.get("structural_churn") or 0
+    drivers = c360.get("churn_drivers") or []
+    if cancelled:
+        segments = [("Cancellation received", churn, "var(--lt-loss)")]
+    else:
+        segments = [("Base risk of the contracts", max(base, 0), "var(--lt-line-strong)")] + [
+            (d.get("label"), d.get("increment") or 0,
+             "var(--lt-resolve)" if d.get("category") == "service" else "var(--lt-primary)")
+            for d in drivers if (d.get("increment") or 0) > 0]
+    bar = "".join(f'<span title="{esc(lbl)}: {esc(pct(inc))}" style="display: block; height: 100%; '
+                  f'width: {inc * 100:.1f}%; background: {col};"></span>' for lbl, inc, col in segments)
+    reasons = "".join(
+        f'<div class="lt-row" style="gap: 8px;"><span class="lt-swatch" style="--lt-swatch: {col};"></span>'
+        f'<span class="lt-small" style="flex: 1;">{esc(lbl)}</span>'
+        f'<span class="lt-small" style="font-weight: 700;">{"+" if i else ""}{esc(f"{inc * 100:.0f}")} pp</span></div>'
+        for i, (lbl, inc, col) in enumerate(segments))
+    reasons += "".join(f'<div class="lt-caption">{esc(d.get("label"))}: {esc(f"{(d.get("increment") or 0) * 100:.0f}")} pp '
+                       '(lowers the risk)</div>' for d in drivers if (d.get("increment") or 0) < 0)
+
+    after, gain = rec.get("churn_after_accept"), rec.get("expected_dclv_eur") or 0
+    if rec.get("action_type") == "no_contact":
+        action = ("No permitted action is worth more than leaving this customer alone today.", "")
+    else:
+        action = (f"{esc(rec.get('recommended_action_name'))}: churn risk {esc(pct(churn))} → {esc(pct(after))} if it "
+                  f"succeeds.", f"{esc(eur(gain, sign=True))} expected customer value")
+
+    def money(label, amount, note, tone=""):
+        return (f'<div class="lt-hero__stat" style="background: var(--lt-sunken); border: 1px solid var(--lt-line);">'
+                f'<span class="lt-label">{label}</span><span class="lt-metric" style="{tone}">{amount}</span>'
+                f'<span class="lt-caption">{note}</span></div>')
+
+    return (
+        '<section class="lt-card lt-card--shadow" style="border-radius: var(--lt-radius-xl);">'
+        '<div class="lt-card__header"><h2 class="lt-h3">Will this customer cancel?</h2>'
+        '<span class="lt-tag lt-tag--estimate">Estimate · churn model of the data</span></div>'
+        '<div class="lt-grid" style="--lt-grid-min: 300px; gap: 24px; align-items: start;">'
+        '<div class="lt-stack" style="gap: 10px;">'
+        f'<div class="lt-row" style="gap: 10px; align-items: baseline;"><span class="lt-metric--xl" style="color: {color};">'
+        f'{esc(pct(churn))}</span><span class="lt-body">chance to cancel within 12 months</span></div>'
+        f'<div class="lt-row" style="gap: 8px;"><span class="lt-pill" style="font-weight: 700; color: {color};">{level} risk'
+        f'</span><span class="lt-caption">higher than {esc(pct(share_below(churn, levels)))} of all customers</span></div>'
+        f'<div class="lt-bar lt-bar--thick" style="display: flex;">{bar}</div>'
+        f'<div class="lt-stack" style="gap: 6px;"><span class="lt-label">Why</span>{reasons}</div></div>'
+        '<div class="lt-stack" style="gap: 10px;">'
+        '<div class="lt-grid" style="--lt-grid-min: 150px; gap: 8px;">'
+        + money("At stake if they cancel", esc(eur(clv)), "customer value (CLV, 10 years) · Estimate")
+        + money("Lost to service problems", esc(eur(impact)) if impact else "€0",
+                "CLV reduced by service cases · from the data", "color: var(--lt-loss);" if impact else "")
+        + '</div>'
+        f'<div class="lt-banner lt-banner--info">{svg("info")}<span>{action[0]}'
+        f'{" <strong>" + action[1] + "</strong>" if action[1] else ""}</span></div>'
+        '</div></div></section>')
