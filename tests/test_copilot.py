@@ -301,6 +301,23 @@ def test_llm_fabricated_references_are_rejected(fake_lighty):
     assert all(f["fact_id"] != "F999" for f in r["supporting_facts"])
 
 
+def test_llm_citing_a_customer_text_is_not_rejected(fake_lighty):
+    """The model sometimes lists the id of a customer text (U1) next to the facts. That is no fabrication, so the
+    answer stays; only F ids count as supporting facts. Made-up ids are still rejected (test above)."""
+    def reply(messages):
+        prompt = messages[-1]["content"]
+        nba_id = re.search(r"ENGINE DECISION \(authoritative, do not change\): \[(F\d+)\]", prompt).group(1)
+        text_id = re.search(r'<customer_text id="(U\d+)"', prompt).group(1)
+        return json.dumps({"answer": "Erst die offene Beschwerde klären, dann nichts verkaufen.",
+                           "suggested_customer_message": None, "fact_ids": [nba_id, text_id], "uncertainty": None})
+    lt, llm = fake_lighty(reply)
+    r = lt.copilot.chat(emp(), "MG-100004", "Was hat der Kunde zuletzt geschrieben?", None, "de")
+    assert re.search(r'<customer_text id="U\d+"', llm.prompt_text())   # MG-100004 has customer texts
+    assert r["answer_origin"]["response"] == "llm"
+    assert not any(w["code"] == "llm_output_rejected" for w in r["warnings"])
+    assert all(f["fact_id"].startswith("F") for f in r["supporting_facts"])
+
+
 # 9 missing information -------------------------------------------------------------------------------------------
 @pytest.mark.parametrize("question,expected", [("Wie heißt der Kunde?", "Name"),
                                                ("Welche Heizung hat der Kunde?", "Heizungsart"),

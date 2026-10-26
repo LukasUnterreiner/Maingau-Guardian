@@ -620,7 +620,7 @@ class EmployeeCopilotService:
             warnings.append({"code": "llm_output_rejected", "message": "AI output was not valid JSON. Deterministic "
                                                                       "answer used."})
             return None, warnings, "LLM output not parseable"
-        ids, problems = self.prompts.validate_fact_ids(obj.get("fact_ids"), facts)
+        ids, problems = self.prompts.validate_fact_ids(obj.get("fact_ids"), facts, self._text_ids(ctx))
         problems += self.prompts.validate_text(obj["answer"], facts, ctx.customer_id)
         msg = obj.get("suggested_customer_message")
         msg_problems: list[str] = []
@@ -643,6 +643,10 @@ class EmployeeCopilotService:
             unc = None
         return {"answer": obj["answer"].strip(), "message": msg.strip() if msg else None, "fact_ids": ids,
                 "uncertainty": unc}, warnings, None
+
+    @staticmethod
+    def _text_ids(ctx: CustomerContext) -> set[str]:
+        return {u.text_id for u in ctx.untrusted if not u.flagged}
 
     @staticmethod
     def _service_warning(ctx: CustomerContext) -> dict[str, str]:
@@ -865,7 +869,7 @@ class EmployeeCopilotService:
         problems = []
         for k in ("current_situation", "recommended_approach"):
             problems += [f"{k}:{p}" for p in self.prompts.validate_text(obj[k], facts, ctx.customer_id, 800)]
-        _, id_problems = self.prompts.validate_fact_ids(obj.get("fact_ids"), facts)
+        _, id_problems = self.prompts.validate_fact_ids(obj.get("fact_ids"), facts, self._text_ids(ctx))
         problems += id_problems
         if problems:
             return None, [{"code": "llm_output_rejected",

@@ -446,6 +446,14 @@ def _fact_label(fact: dict) -> str:
     return f"{label} {ident}".strip() if label else key.replace("_", " ").replace(":", " ").capitalize()
 
 
+# The copilot's technical warnings in plain words; the original text stays in the tooltip.
+WARNING_TEXT = {
+    "llm_output_rejected": "Lighty's check did not accept the AI wording, so this is the rule-based answer.",
+    "llm_message_rejected": "Lighty's check did not accept the AI wording for the customer, so the template is shown.",
+    "llm_unavailable": "The AI was not reachable, so this is the rule-based answer.",
+}
+
+
 def sales_banner(resp: dict) -> str:
     """The yellow "no sales offers" banner; shown once at the top of the chat, not under every answer."""
     return "".join(f'<div class="lt-banner lt-banner--attention">{svg("alert")}{esc(w.get("message"))}</div>'
@@ -481,7 +489,8 @@ def lighty_answer(resp: dict) -> str:
                   f'<span class="lt-confidence lt-confidence--{esc(level)}" aria-hidden="true"><span></span><span></span>'
                   f'<span></span></span><span class="lt-small">{esc(level.capitalize())}</span></div>') if level else ""
     other = [w for w in resp.get("warnings", []) if w.get("code") != "sales_restricted"]
-    notes = "".join(f'<div class="lt-caption">{esc(w.get("message"))}</div>' for w in other)
+    notes = "".join(f'<div class="lt-caption" title="{esc(w.get("message"))}">'
+                    f'{esc(WARNING_TEXT.get(w.get("code"), w.get("message")))}</div>' for w in other)
     out = [f'<div class="lt-msg-lighty"><div class="lt-row" style="gap: 8px;"><span class="lt-answer__mark">{SPARK}</span>'
            f'<strong>Lighty</strong>{chip}</div>{body}</div>']
     if chips:
