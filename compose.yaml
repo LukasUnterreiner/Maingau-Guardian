@@ -28,5 +28,25 @@ services:
           cpus: "2.0"
           memory: 2g
 
+  # Lighty web app (Streamlit, frontend/). VM port 443 -> container 8501; on wsvm38 that is http://130.83.85.181:38443.
+  # Plain HTTP on that port, no TLS. Employees sign in with a token from EMPLOYEE_TOKENS.
+  lighty-ui:
+    build: ./frontend
+    image: lighty-ui:latest
+    container_name: lighty-ui
+    restart: unless-stopped
+    ports:
+      - "${UI_PORT:-443}:8501"
+    environment:
+      LIGHTY_API_URL: http://lighty:8000
+      LIGHTY_ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+    depends_on:
+      - lighty
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
 volumes:
   lighty-runtime:

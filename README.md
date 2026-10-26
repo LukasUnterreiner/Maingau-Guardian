@@ -13,7 +13,8 @@ Lighty (formerly *MAINGAU Guardian*) has two parts:
    diesem Kunden umgehen?"* in a multi-turn chat. It uses only database facts and the engine's decision, never
    contacts customers, and every suggested customer wording needs human approval.
 
-Futury Build Days hackathon with MAINGAU Energie and hessian.AI. Backend only; the frontend is separate.
+Futury Build Days hackathon with MAINGAU Energie and hessian.AI. The backend is in `app/`; a web app in the team's
+"Daylight" design that runs on top of it is in `frontend/` (see [Web app](#web-app-frontend)).
 
 * API reference for the frontend: [`API_CONTRACT.md`](API_CONTRACT.md) (copilot: §4.12–4.18, chat UI guide: §5.1,
   changes from Guardian: §7)
@@ -75,6 +76,40 @@ deterministic rules. The request format was checked against the hessian.AI Infer
 prefilled with these values, only `AI_API_KEY` has to be set on the server. A live call has not been made from the
 development environment (the gateway was not reachable from there), so test it once on the server.
 
+## Web app (`frontend/`)
+
+A Streamlit app in the team's Lighty "Daylight" design (`frontend/theme/`, unchanged from the design team) that shows
+live data from the backend:
+
+* **Cockpit**: KPI tiles from `/api/marketing/overview`, the most valuable decision waiting for review (with Approve /
+  Reject), today's decision mix and contacts by channel.
+* **Approval queue**: all decisions by status (pending, approved, rejected) with filters; select a row to see the
+  full decision and approve or reject it.
+* **Customers**: Lighty's decision for one customer, the options it compared (blocked ones greyed out with their
+  rule codes) and **Ask Lighty**, the employee copilot chat with suggested questions, warnings, fact chips,
+  confidence and the German wording box (copy only, never send).
+
+Employees sign in with a token from `EMPLOYEE_TOKENS`. The app calls the backend from the server side, so CORS does
+not apply. Everything the API returns is HTML-escaped before it is shown.
+
+```bash
+cd frontend && pip install -r requirements.txt
+LIGHTY_API_URL=http://localhost:8000 streamlit run app.py      # http://localhost:8501
+```
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `LIGHTY_API_URL` | `http://localhost:8000` (`http://lighty:8000` in Docker) | Backend address |
+| `LIGHTY_TOKEN` | empty | Local use only: sign in automatically with this employee token |
+| `LIGHTY_ADMIN_TOKEN` | empty | Needed only when the backend sets `ADMIN_TOKEN` (approve/reject); compose passes `ADMIN_TOKEN` from `.env` |
+
+`docker compose up -d --build` starts it as service `lighty-ui` next to the backend, on VM port 443 (`UI_PORT`).
+On wsvm38 that is **`http://130.83.85.181:38443`** (plain HTTP on that port, type `http://`).
+
+Tested by hand in Chromium against the local backend: sign-in (wrong and right token), cockpit, approving a
+decision (flash message, pending count goes down), queue filters, row selection, customer page, two chat turns
+and a phone-width view. There are no automated tests for the web app.
+
 ## Tests
 
 ```bash
@@ -109,6 +144,8 @@ curl localhost/api/health
 * Service, image, container and volume are named `lighty`. If the older `maingau-guardian` container runs on the
   same host, run `docker compose down` before updating the checkout (or `docker compose up -d --build
   --remove-orphans` afterwards), because both use port 80. The new volume starts with an empty decision log.
+* `lighty-ui` (the web app, `frontend/`) is built from `frontend/Dockerfile` and maps VM port 443 to Streamlit's
+  8501; it reaches the backend inside the compose network at `http://lighty:8000`.
 * `./data` is mounted read-only at `/srv/data`; the SQLite decision log, approvals, settings and copilot
   conversations live in the named volume mounted at `/srv/runtime`.
 * `restart: unless-stopped` and a health check on `/api/health`.
@@ -171,6 +208,12 @@ app/
     conversation_service.py      SQLite: copilot conversations and messages
     decision_log.py              SQLite: decisions, approvals, drafts, settings
     lighty.py                    Facade used by the routes
+frontend/
+  app.py                         Streamlit entry: theme, sign-in, navigation
+  lighty_api.py                  Client for the backend API
+  ui.py                          Design pieces filled with API data, cached data access, approve/reject
+  views/                         Cockpit, approval queue, customer page with Ask Lighty
+  theme/                         Lighty "Daylight" design from the design team (CSS, helpers, preview)
 tests/                           pytest suite
 data/                            Dataset (synthetic)
 docs/METHODOLOGY.md              Method, assumptions, limitations

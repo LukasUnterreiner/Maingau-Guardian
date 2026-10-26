@@ -1,0 +1,36 @@
+/* Streamlit extras for the Daylight theme, loaded by theme.apply_theme().
+   Font and colours come from .streamlit/config.toml; this file only adds
+   what the config cannot set. */
+
+.stApp { font-variant-numeric: tabular-nums; }
+[data-testid="stElementContainer"]:has(style#lighty-theme) { display: none; }   /* the empty slot apply_theme() uses */
+header[data-testid="stHeader"] { background: transparent; }
+.stMainBlockContainer { max-width: var(--lt-content-max); padding-top: 2.5rem; }
+
+/* headings: tight tracking like the canvas */
+.stApp h1 { letter-spacing: -0.03em; }
+.stApp h2 { letter-spacing: -0.015em; }
+
+/* st.metric as a Lighty KPI tile */
+[data-testid="stMetric"] {
+  background: var(--lt-surface);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-radius-lg);
+  padding: 18px 20px;
+}
+[data-testid="stMetricValue"] { letter-spacing: -0.02em; }
+
+/* st.container(border=True) as a Lighty card */
+.stApp [data-testid="stVerticalBlock"][class*="border"],
+.stApp [data-testid="stVerticalBlockBorderWrapper"] {
+  background: var(--lt-surface);
+  border-radius: var(--lt-radius-lg);
+}
+
+/* night sidebar: the current page in radiant blue */
+[data-testid="stSidebarNav"] a[aria-current="page"],
+[data-testid="stSidebarNavLink"][aria-current="page"] {
+  background: var(--lt-primary);
+}
+[data-testid="stSidebarNav"] a[aria-current="page"] span,
+[data-testid="stSidebarNavLink"][aria-current="page"] span { color: #FFFFFF; }

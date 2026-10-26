@@ -1,0 +1,37 @@
+# Lighty "Daylight" theme as Streamlit settings (same values as theme/lighty-theme.css).
+[theme]
+base = "light"
+primaryColor = "#0069F1"
+backgroundColor = "#F1F6FF"
+secondaryBackgroundColor = "#F7FAFF"
+textColor = "#002657"
+linkColor = "#0069F1"
+borderColor = "#E2EAF6"
+dataframeBorderColor = "#E2EAF6"
+dataframeHeaderBackgroundColor = "#F7FAFF"
+dataframeHeaderTextColor = "#567398"
+greenColor = "#008153"
+redColor = "#E20707"
+font = "'Plus Jakarta Sans':https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&display=swap"
+baseRadius = "12px"
+buttonRadius = "12px"
+headingFontWeights = 700
+metricValueFontWeight = 300
+showWidgetBorder = true
+chartCategoricalColors = ["#004BAD", "#F08C1A", "#008153", "#B5C5DA", "#0069F1", "#567398"]
+
+[theme.sidebar]
+backgroundColor = "#002657"
+secondaryBackgroundColor = "#0A3270"
+textColor = "#B5C5DA"
+primaryColor = "#FFE500"
+borderColor = "#123A72"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

@@ -1,0 +1,42 @@
+/* App-specific additions on top of theme/lighty-theme.css and theme/streamlit.css. */
+
+/* every page uses the Lighty font and canvas */
+.stApp { font-family: var(--lt-font); background: var(--lt-canvas); color: var(--lt-ink); }
+.stApp h1, .stApp h2, .stApp h3 { font-family: var(--lt-font); color: var(--lt-ink); }
+
+/* the night sidebar: captions and the sign-out button stay readable */
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] strong { color: var(--lt-night-text); }
+[data-testid="stSidebar"] button[kind="tertiary"] p { color: var(--lt-night-muted); }
+[data-testid="stSidebarNav"] a span { color: var(--lt-night-text); font-weight: 600; }
+
+/* sign-in card */
+.st-key-sign-in { background: var(--lt-surface); border-radius: var(--lt-radius-xl) !important; padding: 12px; margin-top: 8vh;
+                  box-shadow: var(--lt-shadow-card); }
+
+/* "Ask Lighty" panel: a raised card like the design */
+.st-key-ask-lighty { background: var(--lt-surface); border: 1px solid var(--lt-line); border-radius: var(--lt-radius-xl);
+                     padding: 20px; box-shadow: var(--lt-shadow-card); }
+
+/* the German wording box: copy only, never send */
+[class*="st-key-suggestion-"] { gap: 6px; padding: 16px; border: 1px solid var(--lt-primary-tint-line);
+                                border-radius: var(--lt-radius-lg); background: #F2F8FF; }
+[class*="st-key-suggestion-"] pre, [class*="st-key-suggestion-"] [data-testid="stCode"] > div,
+[class*="st-key-suggestion-"] [data-testid="stCodeBlock"] { background: transparent !important; padding: 0 !important; }
+[class*="st-key-suggestion-"] code { font-family: var(--lt-font) !important; font-size: 16px !important; line-height: 26px !important;
+                                     font-weight: 500; color: var(--lt-ink) !important; white-space: pre-wrap !important; }
+
+/* cards drawn with st.container(border=True) */
+.stApp [data-testid="stVerticalBlock"][class*="st-key-card-"] { background: var(--lt-surface); border-radius: var(--lt-radius-lg);
+                                                                padding: 18px 20px; border: 1px solid var(--lt-line); }
+
+/* the Lighty hero sits flush with the buttons below it */
+.lt-hero { margin-bottom: 4px; }
+
+/* Streamlit's heading styles must not reach the design's own headings */
+.stApp .lt-hero h2.lt-hero__title { color: #FFFFFF; font-size: 28px; line-height: 34px; font-weight: 700; padding: 0; margin: 0; }
+.stApp .lt-display { padding: 0; }
+.stApp .lt-h1, .stApp .lt-h3 { padding: 0; }
+[data-testid="stMarkdownContainer"] > .lt-grid, [data-testid="stMarkdownContainer"] > .lt-hero { margin: 8px 0 4px; }
+.lt-hero__stat-value { font-size: 26px; line-height: 1.1; }
+.stApp h2.lt-h3, .stApp h3.lt-h3 { font-size: 16px; line-height: 24px; font-weight: 600; padding: 0; margin: 0; letter-spacing: 0; }

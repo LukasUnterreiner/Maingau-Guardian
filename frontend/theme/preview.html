@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lighty theme preview</title>
+<link rel="stylesheet" href="lighty-theme.css">
+</head>
+<!-- Every part of lighty-theme.css on one page. Copy the markup you need.
+     Numbers are real engine output from Maingau-Guardian/API_CONTRACT.md. -->
+<body class="lt-app">
+<div class="lt-shell">
+
+  <nav class="lt-sidebar" aria-label="Main">
+    <div class="lt-brand">
+      <span class="lt-brand__mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/><circle cx="12" cy="8.2" r="2.3" fill="#FFE500" stroke="none"/></svg></span>
+      <div><div class="lt-brand__name">Lighty</div><div class="lt-brand__sub">MAINGAU Energie</div></div>
+    </div>
+    <div class="lt-nav">
+      <span class="lt-nav__title">Workspace</span>
+      <a class="lt-nav__item" href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1.5"/><rect width="7" height="5" x="14" y="3" rx="1.5"/><rect width="7" height="9" x="14" y="12" rx="1.5"/><rect width="7" height="5" x="3" y="16" rx="1.5"/></svg>Cockpit</a>
+      <a class="lt-nav__item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg>Approval queue<span class="lt-nav__badge">413</span></a>
+      <a class="lt-nav__item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg>Customers</a>
+      <a class="lt-nav__item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>Simulator</a>
+    </div>
+  </nav>
+
+  <main class="lt-main">
+    <div class="lt-container">
+
+      <div class="lt-stack" style="gap: 8px;">
+        <span class="lt-small" style="color: var(--lt-primary); font-weight: 600;">Monday, 26 October · Good morning</span>
+        <h1 class="lt-display">413 decisions are ready for your review.</h1>
+        <p class="lt-body">Lighty evaluated all 750 customers. 337 of them are best left alone today.</p>
+      </div>
+
+      <div class="lt-grid" style="--lt-grid-min: 230px;">
+        <div class="lt-kpi lt-kpi--blue">
+          <div class="lt-kpi__head"><span class="lt-kpi__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg></span>Protected customer value</div>
+          <span class="lt-kpi__value">€7,959</span>
+          <div class="lt-kpi__note"><span class="lt-trend">↑ 99%</span>vs. sales-first · Estimate</div>
+        </div>
+        <div class="lt-kpi lt-kpi--teal">
+          <div class="lt-kpi__head"><span class="lt-kpi__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg></span>Expected ΔCLV</div>
+          <span class="lt-kpi__value">+€15,982</span>
+          <div class="lt-kpi__note">on €412,035 current CLV</div>
+        </div>
+        <div class="lt-kpi lt-kpi--amber">
+          <div class="lt-kpi__head"><span class="lt-kpi__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg></span>Pending approvals</div>
+          <span class="lt-kpi__value">413</span>
+          <div class="lt-kpi__note">every contact needs a person's yes</div>
+        </div>
+        <div class="lt-kpi lt-kpi--orange">
+          <div class="lt-kpi__head"><span class="lt-kpi__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg></span>Customers with service issues</div>
+          <span class="lt-kpi__value">227</span>
+          <div class="lt-kpi__note">resolve first, offers wait</div>
+        </div>
+      </div>
+
+      <article class="lt-hero">
+        <div class="lt-hero__meta">
+          <span class="lt-hero__badge"><svg viewBox="0 0 24 24" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>Lighty recommends</span>
+          <span class="lt-kind lt-kind--resolve">Resolve an issue</span>
+          <span class="lt-spacer"></span>
+          <span class="lt-hero__status">Pending approval</span>
+        </div>
+        <h2 class="lt-hero__title">Call back and resolve the open complaint. No offer.</h2>
+        <p class="lt-hero__reason">Resolving removes the service churn drivers (open complaint, dunning level 2 or higher), lowering churn from 38% to 18% if successful.</p>
+        <div class="lt-hero__stats">
+          <div class="lt-hero__stat"><span class="lt-hero__stat-label">Expected ΔCLV</span><span class="lt-hero__stat-value">+€66.50</span></div>
+          <div class="lt-hero__stat"><span class="lt-hero__stat-label">Success chance</span><span class="lt-hero__stat-value">71%</span></div>
+          <div class="lt-hero__stat"><span class="lt-hero__stat-label">CLV after</span><span class="lt-hero__stat-value">€233.55</span></div>
+          <div class="lt-hero__stat"><span class="lt-hero__stat-label">Channel</span><span class="lt-hero__stat-value">Call · Sie</span></div>
+        </div>
+        <div class="lt-hero__actions">
+          <button type="button" class="lt-btn lt-btn--primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Approve</button>
+          <button type="button" class="lt-btn lt-btn--secondary">Reject</button>
+          <span class="lt-spacer"></span>
+          <span class="lt-hero__fine">MG-100004 · Estimate, not proven uplift</span>
+        </div>
+      </article>
+
+      <div class="lt-grid" style="--lt-grid-min: 380px; align-items: start;">
+        <section class="lt-card">
+          <div class="lt-card__header"><h2 class="lt-h3">Options Lighty compared</h2><span class="lt-caption">blocked options stay visible</span></div>
+          <div class="lt-options">
+            <div class="lt-option lt-option--top">
+              <span class="lt-rank">1</span>
+              <div><div style="font-weight: 700;">Service-Only / No offer</div><div class="lt-caption">Resolve an issue · 71%</div></div>
+              <span class="lt-small">Service call</span>
+              <div class="lt-bar" style="--value: 95%; --lt-bar-color: var(--lt-loyalty); background: #FFFFFF;"><span></span></div>
+              <span class="lt-num lt-delta--gain">+€66.50</span>
+            </div>
+            <div class="lt-option">
+              <span class="lt-rank">2</span>
+              <div><div style="font-weight: 700;">No contact</div><div class="lt-caption">baseline</div></div>
+              <span class="lt-caption">None</span>
+              <div class="lt-bar"><span></span></div>
+              <span class="lt-num" style="font-weight: 700; color: var(--lt-ink-2);">€0.00</span>
+            </div>
+            <div class="lt-option">
+              <span class="lt-rank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="10" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+              <div class="lt-stack" style="gap: 6px;"><div style="font-weight: 700; color: var(--lt-ink-2);">Mobil S / M / L</div><div class="lt-row" style="gap: 4px;"><span class="lt-chip lt-chip--rule" title="OPEN_COMPLAINT_BLOCKS_MARKETING">Open complaint</span><span class="lt-chip lt-chip--rule" title="PROFILING_CONSENT_NOT_GIVEN">No profiling consent</span></div></div>
+              <span class="lt-caption">App push</span>
+              <div class="lt-bar lt-bar--blocked"><span></span></div>
+              <span class="lt-num lt-delta--void">+€0.06</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="lt-card lt-card--shadow" aria-label="Ask Lighty" style="border-radius: var(--lt-radius-xl);">
+          <div class="lt-banner lt-banner--attention"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18-8-14a2 2 0 0 0-3.5 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Open service case: no sales offers.</div>
+          <div class="lt-msg-user" lang="de">Wie sollte ich mit diesem Kunden umgehen?</div>
+          <div class="lt-msg-lighty">
+            <div class="lt-row" style="gap: 8px;"><strong>Lighty</strong><span class="lt-origin">Rule-based</span></div>
+            <ul lang="de">
+              <li>Aktuelle Situation: eine offene Beschwerde; der Kunde wünscht einen Rückruf; Mahnstufe 3.</li>
+              <li>Keine Verkaufsangebote während des offenen Service-Falls. Erst das Problem lösen.</li>
+            </ul>
+          </div>
+          <div class="lt-suggestion">
+            <div class="lt-row"><span class="lt-suggestion__label">Suggested opening · review before use</span><span class="lt-spacer"></span><button type="button" class="lt-btn lt-btn--secondary lt-btn--sm">Copy</button></div>
+            <p class="lt-suggestion__text" lang="de">„Ich sehe, dass Ihr Anliegen bei uns noch nicht abschließend geklärt ist und Sie um einen Rückruf gebeten haben. Das tut mir leid. Ich kümmere mich jetzt persönlich darum.“</p>
+          </div>
+          <div class="lt-row" style="gap: 6px;">
+            <span class="lt-chip lt-chip--fact">Ticket TK-200772</span>
+            <span class="lt-chip lt-chip--calc">ΔCLV +€66.50</span>
+            <span class="lt-chip lt-chip--gap">No CSAT recorded</span>
+          </div>
+          <label class="lt-composer"><span class="lt-visually-hidden">Ask Lighty about MG-100004</span><input type="text" placeholder="Ask about this customer…"><button type="button" class="lt-btn lt-btn--primary lt-btn--icon" aria-label="Ask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button></label>
+        </aside>
+      </div>
+
+      <section class="lt-card lt-card--flush">
+        <div class="lt-card__header" style="padding: 18px 22px;"><h2 class="lt-h3">Approval queue</h2><span class="lt-pill lt-pill--pending">413 pending</span></div>
+        <div class="lt-table-wrap">
+          <table class="lt-table" style="min-width: 720px;">
+            <thead><tr><th scope="col">Customer</th><th scope="col">Decision</th><th scope="col">Channel · tone</th><th scope="col" class="lt-num">CLV now</th><th scope="col" class="lt-num">Expected ΔCLV</th><th scope="col">Status</th><th scope="col"><span class="lt-visually-hidden">Actions</span></th></tr></thead>
+            <tbody>
+              <tr><td><a class="lt-id" href="#">MG-100315</a></td><td><span class="lt-kind lt-kind--resolve">Resolve an issue</span></td><td class="lt-small">Service e-mail · Sie</td><td class="lt-num">€898.31</td><td class="lt-num lt-delta--gain">+€223.09</td><td><span class="lt-pill lt-pill--pending">Pending</span></td><td class="lt-num"><button type="button" class="lt-btn lt-btn--tint lt-btn--sm">Review</button></td></tr>
+              <tr><td><a class="lt-id" href="#">MG-100127</a></td><td><span class="lt-kind lt-kind--offer">Offer · Mobil S / M / L</span></td><td class="lt-small">App push · Sie</td><td class="lt-num">€3,263.46</td><td class="lt-num lt-delta--gain">+€66.00</td><td><span class="lt-pill lt-pill--pending">Pending</span></td><td class="lt-num"><button type="button" class="lt-btn lt-btn--tint lt-btn--sm">Review</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="lt-card">
+        <h2 class="lt-h3">Small parts</h2>
+        <div class="lt-row"><span class="lt-pill lt-pill--pending">Pending approval</span><span class="lt-pill lt-pill--approved">Approved</span><span class="lt-pill lt-pill--rejected">Rejected</span><span class="lt-pill">No approval needed</span><span class="lt-pill lt-pill--issue">Open complaint</span></div>
+        <div class="lt-row"><span class="lt-kind lt-kind--offer">Offer</span><span class="lt-kind lt-kind--resolve">Resolve an issue</span><span class="lt-kind lt-kind--loyalty">Strengthen loyalty</span><span class="lt-kind lt-kind--nocontact">Do not contact</span></div>
+        <div class="lt-row"><span class="lt-tone"><span class="lt-tone__value">Sie</span><span class="lt-tone__source">customer's own words</span></span><span class="lt-tone lt-tone--du"><span class="lt-tone__value">Du</span><span class="lt-tone__source">campaign history</span></span><span class="lt-tag lt-tag--estimate">Estimate</span><span class="lt-tag lt-tag--observed">Observed</span><span class="lt-tag lt-tag--simulated">Simulated</span></div>
+        <div class="lt-row"><button type="button" class="lt-btn lt-btn--primary">Approve</button><button type="button" class="lt-btn lt-btn--secondary">Simulate</button><button type="button" class="lt-btn lt-btn--ghost">Reject</button><button type="button" class="lt-btn lt-btn--primary" disabled>Disabled</button><div class="lt-segmented" role="group" aria-label="View"><button type="button" aria-pressed="true">All</button><button type="button" aria-pressed="false">Pending</button><button type="button" aria-pressed="false">Blocked</button></div></div>
+        <div class="lt-grid" style="--lt-grid-min: 220px;">
+          <div class="lt-field"><label for="p-search">Search</label><input id="p-search" class="lt-input" type="text" placeholder="Customer ID or decision"></div>
+          <div class="lt-field"><label for="p-channel">Channel</label><select id="p-channel" class="lt-select"><option>All channels</option><option>App push</option></select></div>
+          <div class="lt-field"><label for="p-range">Success chance · 50%</label><input id="p-range" class="lt-range" type="range" min="0" max="100" value="50"></div>
+        </div>
+        <div class="lt-row"><span class="lt-label">Confidence</span><span class="lt-confidence lt-confidence--medium" aria-hidden="true"><span></span><span></span><span></span></span><span class="lt-small">Medium</span><span class="lt-spacer"></span><span class="lt-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="lt-caption">Lighty is writing…</span></div>
+      </section>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>
