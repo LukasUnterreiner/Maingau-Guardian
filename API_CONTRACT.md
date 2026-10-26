@@ -111,6 +111,9 @@ All errors share one shape:
 | `NO_SERVICE_ISSUE` | P‑SV‑01 without anything to resolve. |
 | `NO_CUSTOMER_REQUEST` | Inquiry-reply path without an open tariff inquiry. |
 
+Channel and churn-driver codes (`service_call`, `price_guarantee_ends_90d`, …) likewise stay in structured fields;
+the decision `reason` and the copilot texts name channels, drivers and products in words.
+
 The codes appear only in structured fields (`exclusion_reasons`, `eligibility_checks`, `restriction_codes`, the decision `reason`). Texts written for employees (copilot `response`, `warnings[].message`, fact texts) use readable names instead, e.g. "offene Beschwerde" / "open complaint" (`app/services/rule_labels.py`).
 
 ## 4. Endpoints
@@ -296,7 +299,7 @@ Example — service case (MG‑100004):
   "required_service_workflow": false,
   "requires_human_approval": true,
   "approval_status": "pending_approval",
-  "reason": "Resolve the service issue first (Service-Only / No offer via service_call). Resolving removes the service churn drivers (Open complaint, Dunning level 2 or higher), lowering churn from 38.0% to 18.0% if successful (estimated success probability 71%). Expected dCLV +66.50 EUR versus no contact, after the 6.00 EUR contact cost and the resolution cost. Marketing restrictions in force: CONTACT_FREQUENCY_LIMIT, DUNNING_BLOCKS_MARKETING, OPEN_COMPLAINT_BLOCKS_MARKETING, PROFILING_CONSENT_NOT_GIVEN.",
+  "reason": "Resolve the service issue first (Service-Only / No offer via service call). Resolving removes the service churn drivers (Open complaint, Dunning level 2 or higher), lowering churn from 38.0% to 18.0% if successful (estimated success probability 71%). Expected dCLV +66.50 EUR versus no contact, after the 6.00 EUR contact cost and the resolution cost. Marketing restrictions in force: CONTACT_FREQUENCY_LIMIT, DUNNING_BLOCKS_MARKETING, OPEN_COMPLAINT_BLOCKS_MARKETING, PROFILING_CONSENT_NOT_GIVEN.",
   "alternatives": [
     { "product_id": "NO_CONTACT", "product_name": "No contact", "action_type": "no_contact", "business_line": null, "channel": "none",
       "process": "none", "executable": true, "acceptance_probability": null, "acceptance_source": "baseline", "acceptance_observations": 0,
@@ -335,7 +338,7 @@ Example — healthy cross-sell (MG‑100127, abbreviated):
   "action_type": "sales", "product_id": "P-MO-01", "channel": "app_push", "process": "marketing", "tonality": "sie", "tonality_source": "default_formal",
   "current_clv_eur": 3263.46, "expected_dclv_eur": 66.0, "estimated_clv_after_eur": 3329.46, "acceptance_probability": 0.1099,
   "required_service_workflow": false, "requires_human_approval": true, "approval_status": "pending_approval",
-  "reason": "Offer Mobil S / M / L via app_push: expected dCLV +66.00 EUR versus no contact (estimated acceptance 11.0%). Adds 54 EUR annual margin if accepted. Next best permitted alternative: P-IN-01 (+40.47 EUR).",
+  "reason": "Offer Mobil S / M / L via app push: expected dCLV +66.00 EUR versus no contact (estimated acceptance 11.0%). Adds 54 EUR annual margin if accepted. Next best permitted alternative: Internet (DSL/Glasfaser) (+40.47 EUR).",
   "alternatives": [ { "product_id": "P-IN-01", "channel": "portal_popup", "expected_dclv_eur": 40.47, "…": "…" }, "…", { "product_id": "NO_CONTACT", "expected_dclv_eur": 0.0, "…": "…" } ],
   "blocked_actions": [ { "product_id": "P-EN-03", "exclusion_reasons": ["PREREQUISITE_MISSING"], "…": "…" } ],
   "eligibility_checks": ["…"], "value_labels": {"…": "…"}, "engine_version": "lighty-1.1.0" }
@@ -594,7 +597,7 @@ Example — frustrated customer with an open complaint (MG‑100004, service age
 {
   "conversation_id": "CONV-fce14ed04fc0467db7f47d39da2a44b9",
   "customer_id": "MG-100004", "turn": 1, "language": "de", "intents": ["approach"],
-  "response": "- Aktuelle Situation: eine offene Beschwerde; der Kunde wünscht einen Rückruf; Mahnstufe 3.\n- Lighty empfiehlt den Service-Prozess (P-SV-01, ohne Angebot) über service_call, erwarteter dCLV +66.50 EUR. Erst lösen; Angebote bewertet Lighty danach neu.\n- Keine Verkaufsangebote während des offenen Service-Falls (offene Beschwerde, offene Mahnung). Erst das Problem lösen.\n- Anrede: Sie. Zuhören, das Anliegen zusammenfassen, nächste Schritte verbindlich, aber ohne Zusagen zu Ergebnissen vereinbaren.",
+  "response": "- Aktuelle Situation: eine offene Beschwerde; der Kunde wünscht einen Rückruf; Mahnstufe 3.\n- Lighty empfiehlt den Service-Prozess (P-SV-01, ohne Angebot) über Service-Anruf, erwarteter dCLV +66.50 EUR. Erst lösen; Angebote bewertet Lighty danach neu.\n- Keine Verkaufsangebote während des offenen Service-Falls (offene Beschwerde, offene Mahnung). Erst das Problem lösen.\n- Anrede: Sie. Zuhören, das Anliegen zusammenfassen, nächste Schritte verbindlich, aber ohne Zusagen zu Ergebnissen vereinbaren.",
   "recommended_action": {
     "decision_id": "DEC-48c1817e05fdc73d", "product_id": "P-SV-01", "product_name": "Service-Only / No offer",
     "action_type": "service", "channel": "service_call", "process": "service", "expected_dclv_eur": 66.5,
@@ -602,7 +605,7 @@ Example — frustrated customer with an open complaint (MG‑100004, service age
     "requires_human_approval": true, "approval_status": "pending_approval", "sales_restricted": true,
     "restriction_codes": ["CHANNEL_NOT_AVAILABLE", "CONSENT_NOT_GIVEN", "CONTACT_FREQUENCY_LIMIT", "DUNNING_BLOCKS_MARKETING",
                           "OPEN_COMPLAINT_BLOCKS_MARKETING", "PROFILING_CONSENT_NOT_GIVEN"],
-    "engine_reason": "Resolve the service issue first (Service-Only / No offer via service_call). Resolving removes the service churn drivers (Open complaint, Dunning level 2 or higher), lowering churn from 38.0% to 18.0% if successful …",
+    "engine_reason": "Resolve the service issue first (Service-Only / No offer via service call). Resolving removes the service churn drivers (Open complaint, Dunning level 2 or higher), lowering churn from 38.0% to 18.0% if successful …",
     "engine_version": "lighty-1.1.0", "source": "lighty_engine", "fact_ids": ["F20", "F22"]
   },
   "suggested_customer_message": {
@@ -622,7 +625,7 @@ Example — frustrated customer with an open complaint (MG‑100004, service age
       "text": "Energievertrag electricity (StromKomfort), Status active, seit 2022-07-01, Preisgarantie bis 2027-07-01, Zähler conventional, Abschlag 127.00 EUR, Mahnstufe 3.",
       "value": { "tariff": "StromKomfort", "dunning_level": 3, "…": "…" }, "source_refs": ["R2"], "topics": ["billing", "energy", "products", "restrictions", "retention"] },
     { "fact_id": "F20", "key": "nba", "section": "decision_intelligence", "kind": "engine_computed",
-      "text": "Next Best Action laut Lighty: Service-Only / No offer (P-SV-01) über service_call (Service-Prozess); erwarteter dCLV +66.50 EUR, geschätzte Erfolgs-/Annahmewahrscheinlichkeit 71.1 %; Freigabe durch einen Menschen erforderlich (pending_approval).",
+      "text": "Next Best Action laut Lighty: Service-Only / No offer (P-SV-01) über Service-Anruf (Service-Prozess); erwarteter dCLV +66.50 EUR, geschätzte Erfolgs-/Annahmewahrscheinlichkeit 71.1 %; Freigabe durch einen Menschen erforderlich (pending_approval).",
       "value": { "decision_id": "DEC-48c1817e05fdc73d", "recommended_action": "P-SV-01", "…": "…" }, "source_refs": ["R5"], "topics": ["products", "recommendation"] },
     "…"
   ],
@@ -705,10 +708,10 @@ Example — charging problems (MG‑100009, real, texts only):
   "sections": {
     "customer_overview": { "title": "Kundenüberblick", "text": "B2C, Kunde seit 2016-12-03 (9 Jahre); aktive Geschäftsbereiche: e_mobility; Haushaltsgröße 2; Kundenportal: ja, App: ja. Kundenwert: Jahresmarge 200.11 EUR, Cost-to-Serve 37.50 EUR (beides customer_value); aktueller CLV laut Lighty 402.96 EUR (Modellschätzung).", "items": [], "fact_ids": ["F1", "F4", "F3"] },
     "current_situation": { "title": "Aktuelle Situation", "text": "Aktuell: 4 fehlgeschlagene Ladevorgänge in den letzten 30 Tagen; ein offenes Ticket zum Thema Autostrom/Laden.", "items": [], "fact_ids": ["F9", "F5"] },
-    "recommended_approach": { "title": "Empfohlenes Vorgehen", "text": "Mit dem offenen Anliegen beginnen, Verständnis zeigen, Lösung und nächste Schritte vereinbaren. Zufriedenheit und Gründe für einen möglichen Wechsel offen ansprechen, ohne Druck und ohne Konditionen zuzusagen. Lighty empfiehlt den Service-Prozess (P-SV-01, ohne Angebot) über service_call, erwarteter dCLV +77.13 EUR. Erst lösen; Angebote bewertet Lighty danach neu. Anrede: Sie.", "items": ["…"], "fact_ids": ["…"] },
+    "recommended_approach": { "title": "Empfohlenes Vorgehen", "text": "Mit dem offenen Anliegen beginnen, Verständnis zeigen, Lösung und nächste Schritte vereinbaren. Zufriedenheit und Gründe für einen möglichen Wechsel offen ansprechen, ohne Druck und ohne Konditionen zuzusagen. Lighty empfiehlt den Service-Prozess (P-SV-01, ohne Angebot) über Service-Anruf, erwarteter dCLV +77.13 EUR. Erst lösen; Angebote bewertet Lighty danach neu. Anrede: Sie.", "items": ["…"], "fact_ids": ["…"] },
     "suggested_opening": { "title": "Vorgeschlagener Einstieg (Deutsch)", "text": "Ich sehe, dass es zuletzt Probleme mit Ihren Ladevorgängen gab. Das tut mir leid. Lassen Sie uns das zuerst gemeinsam klären.", "items": [], "fact_ids": ["F9", "F2"] },
     "what_to_avoid": { "title": "Was vermeiden", "text": "…", "items": ["Keine Produkt- oder Tarifangebote, solange der Service-Fall offen ist.", "Keine Rabatte, Gutschriften, Kulanz oder Konditionen zusagen, die nicht freigegeben sind, und keine Ergebnisse garantieren.", "Vorsicht mit Angeboten: Frühere Vorschläge stießen auf Verärgerung.", "Den Kunden nicht alles erneut schildern lassen; die Vorgeschichte ist bekannt.", "Anrede konsequent in der Sie-Form halten."], "fact_ids": ["…"] },
-    "next_best_action": { "title": "Next Best Action", "text": "Lighty empfiehlt den Service-Prozess (P-SV-01, ohne Angebot) über service_call, erwarteter dCLV +77.13 EUR. Erst lösen; Angebote bewertet Lighty danach neu.", "items": [], "fact_ids": ["…"] },
+    "next_best_action": { "title": "Next Best Action", "text": "Lighty empfiehlt den Service-Prozess (P-SV-01, ohne Angebot) über Service-Anruf, erwarteter dCLV +77.13 EUR. Erst lösen; Angebote bewertet Lighty danach neu.", "items": [], "fact_ids": ["…"] },
     "economic_rationale": { "title": "Wirtschaftliche Begründung", "text": "Aktueller CLV 402.96 EUR; erwarteter dCLV der Empfehlung +77.13 EUR gegenüber keinem Kontakt; Abwanderungswahrscheinlichkeit 34.0 %. Modellschätzungen, keine garantierten Werte.", "items": [], "fact_ids": ["…"] }
   },
   "warnings": [ { "code": "sales_restricted", "message": "Open service case: no sales offers." } ],
