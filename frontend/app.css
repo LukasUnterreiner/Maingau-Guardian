@@ -63,6 +63,8 @@
            border: 1px solid var(--lt-line); border-radius: var(--lt-radius-xl); box-shadow: var(--lt-shadow-soft); }
 .lt-tile__head { display: flex; align-items: center; gap: 10px; font-size: 13px; line-height: 17px; font-weight: 600;
                  color: var(--lt-ink-2); }   /* two lines of label are as tall as the icon: the numbers stay in line */
+/* a long German label (Kündigungsgefährdet) breaks inside the tile: hyphenated where the browser can */
+.lt-tile__head > span:last-child { min-width: 0; hyphens: auto; overflow-wrap: break-word; }
 .lt-tile__icon { width: 34px; height: 34px; border-radius: 12px; background: var(--lt-sunken); border: 1px solid var(--lt-line);
                  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .lt-tile__icon svg { width: 18px; height: 18px; }
@@ -90,6 +92,19 @@
   height: 100%; }
 [data-testid="stLayoutWrapper"]:has(> [class*="st-key-ccard-"]) { flex: 1 1 auto; }
 .stApp [class*="st-key-ccard-"] > :last-child { margin-top: auto; }
+/* Streamlit pulls markdown up by 16px at the bottom: in the tallest card the recommendation box then slid under the
+   line above the buttons */
+.stApp [class*="st-key-ccard-"] [data-testid="stMarkdownContainer"]:has(> .lt-ccard) { margin-bottom: 0; }
+/* narrow cards (three in a row, longer German labels): the risk chip moves under the name and the buttons are slimmer,
+   so the customer number and Ablehnen / Freigeben each stay on one line */
+.stApp [class*="st-key-ccard-"] { container-type: inline-size; }
+@container (max-width: 310px) {
+  .stApp .lt-ccard__head { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; row-gap: 6px; }
+  .stApp .lt-ccard__head > .lt-avatar { grid-row: span 2; }
+  .stApp .lt-ccard__head > .lt-status { justify-self: start; }
+  [class*="st-key-cact-"] :is([data-testid="stBaseButton-primary"], [data-testid="stBaseButton-secondary"]) {
+    padding-left: 8px; padding-right: 8px; }
+}
 .lt-ccard { display: flex; flex-direction: column; gap: 16px; }
 .lt-ccard__head { display: flex; align-items: center; gap: 14px; }
 .lt-avatar { position: relative; width: 50px; height: 50px; border-radius: 999px; background: var(--av); color: var(--av-ink);

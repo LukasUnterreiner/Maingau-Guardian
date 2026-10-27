@@ -354,7 +354,7 @@ def minibars(values: list[float], color: str, title: str) -> str:
 
 def tile(icon: str, label: str, value: str, note: str, color: str, bars: str = "") -> str:
     return (f'<div class="lt-tile"><div class="lt-tile__head"><span class="lt-tile__icon" style="color: {color};">'
-            f'{svg(icon)}</span><span>{label}</span></div>'
+            f'{svg(icon)}</span><span lang="{lang()}">{label}</span></div>'
             f'<span class="lt-tile__value">{value}</span>{bars}'
             f'<span class="lt-tile__note">{note}</span></div>')
 
