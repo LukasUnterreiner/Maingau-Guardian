@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guardian Pitch Video</title>
+<!--
+  MAINGAU Guardian · 30-second pitch video · 1920×1080 · 30 fps
+
+  Every frame is a pure function of time: renderAt(t) sets the whole picture for second t.
+  render.cjs steps through t = 0, 1/30, … 29.967 and pipes screenshots into ffmpeg.
+  Opened in a browser (python3 -m http.server, then /guardian-pitch.html) it is a preview player.
+
+  Brief settings (also as query parameters: ?url=…&bg=…&accent=…):
+    background  #F1F6FF  MAINGAU blue-grey-light (Lighty canvas)
+    accent      #004BAD  MAINGAU brand blue
+    typeface    Plus Jakarta Sans (OFL), the stand-in for MAINGAU's licensed RT Rondelle
+    demo URL    [URL]    placeholder until the booking link exists
+-->
+<style>
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("fonts/PlusJakartaSans-latin-wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: block;
+}
+
+:root {
+  --bg: #F1F6FF;
+  --accent: #004BAD;
+  --surface: #FFFFFF;
+  --ink: #002657;
+  --ink-2: #1B4274;
+  --muted: #567398;
+  --line: #E2EAF6;
+  --line-strong: #B5C5DA;
+  --accent-tint: color-mix(in srgb, var(--accent) 9%, #FFFFFF);
+  --accent-line: color-mix(in srgb, var(--accent) 45%, #FFFFFF);
+  --font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #0B1A30; }
+body.render { background: var(--bg); }
+
+#stage {
+  position: relative; width: 1920px; height: 1080px; overflow: hidden;
+  background: var(--bg); color: var(--ink); font-family: var(--font);
+  -webkit-font-smoothing: antialiased; font-kerning: normal;
+  transform-origin: 0 0;
+}
+.scene { position: absolute; inset: 0; opacity: 0; visibility: hidden; }
+.center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.stack { display: grid; place-items: center; }
+.stack > * { grid-area: 1 / 1; }
+
+svg.i { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor;
+        stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- type */
+.headline {
+  margin: 0; font-size: 84px; font-weight: 650; line-height: 1.13;
+  letter-spacing: -0.028em; text-align: center; color: var(--ink);
+}
+
+/* ---------- logo */
+.mark { display: block; }
+.name { font-weight: 750; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; color: var(--ink); }
+.name .brand { color: var(--accent); font-weight: 700; letter-spacing: -0.01em; }
+
+/* ---------- 2 reveal */
+#s2 .mark { width: 136px; height: 153px; margin-bottom: 52px; }
+#s2 .name { font-size: 100px; }
+#s2-tag { margin: 0; font-size: 74px; font-weight: 650; letter-spacing: -0.028em; white-space: nowrap; }
+#s2-tag em { font-style: normal; font-weight: 800; color: var(--accent); }
+
+/* ---------- cards */
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 32px;
+  box-shadow: 0 2px 4px rgba(0, 38, 87, .04), 0 28px 64px -16px rgba(0, 38, 87, .16);
+}
+
+/* 3 customer card */
+#s3-card { width: 780px; padding: 50px 56px 48px; }
+.who-row { display: flex; align-items: center; gap: 32px; }
+.avatar {
+  width: 112px; height: 112px; border-radius: 50%; background: var(--line); color: var(--muted);
+  display: grid; place-items: center; font-size: 56px;
+}
+.who { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.cust-name { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+.chip {
+  display: inline-flex; align-items: center; gap: 12px; padding: 9px 22px 9px 16px; border-radius: 999px;
+  border: 2px solid var(--line-strong); color: var(--ink-2); font-size: 29px; font-weight: 600;
+}
+.chip svg.i { font-size: 32px; }
+.divider { height: 2px; background: var(--line); margin: 42px 0 38px; }
+.action-row { display: flex; align-items: center; justify-content: space-between; }
+.tag {
+  display: inline-flex; align-items: center; padding: 16px 34px; border-radius: 999px;
+  background: var(--accent); color: #FFFFFF; font-size: 36px; font-weight: 700; letter-spacing: -0.01em;
+}
+.callback {
+  width: 108px; height: 108px; border-radius: 50%; background: var(--accent-tint); color: var(--accent);
+  border: 2px solid var(--accent-line); display: grid; place-items: center; font-size: 54px;
+}
+
+/* 4 checklist */
+#s4-list { width: 940px; padding: 22px; }
+.check-row {
+  display: flex; align-items: center; gap: 30px; padding: 26px 30px; border-radius: 22px;
+  font-size: 40px; font-weight: 600; letter-spacing: -0.015em; color: var(--ink-2);
+}
+.check-row + .check-row { margin-top: 6px; }
+.check-row .dot {
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 34px;
+  background: var(--line); color: var(--ink-2);
+}
+.check-row.blocked { color: var(--ink); font-weight: 750; }
+.check-row.blocked .dot { background: var(--accent); color: #FFFFFF; }
+
+/* 5 comparison */
+#s5-chart { width: 840px; position: relative; height: 600px; }
+#s5-cap { position: absolute; left: 0; top: 0; font-size: 32px; font-weight: 650; color: var(--muted); letter-spacing: -0.005em; }
+.plot { position: absolute; left: 0; right: 0; top: 120px; height: 340px; border-bottom: 3px solid var(--line-strong); }
+.bar { position: absolute; bottom: 0; width: 220px; border-radius: 22px 22px 6px 6px; }
+#bar-a { left: 130px; background: var(--line-strong); }
+#bar-b { right: 130px; }
+.bar-label { position: absolute; top: 488px; width: 360px; text-align: center; font-size: 36px; font-weight: 650; letter-spacing: -0.015em; }
+#lab-a { left: 60px; color: var(--ink-2); }
+#lab-b { right: 60px; }
+#s5-pill {
+  position: absolute; right: 130px; width: 220px; display: flex; justify-content: center;
+}
+#s5-pill span {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 22px 10px 18px; border-radius: 999px;
+  background: var(--accent-tint); border: 2px solid var(--accent-line); color: var(--accent);
+  font-size: 28px; font-weight: 750; white-space: nowrap;
+}
+#s5-pill svg.i { font-size: 28px; stroke-width: 2.6; }
+
+/* 6 proof */
+.est {
+  display: inline-flex; align-items: center; padding: 12px 30px; border-radius: 999px;
+  border: 3px dashed var(--accent-line); color: var(--accent); font-size: 34px; font-weight: 700; letter-spacing: 0.005em;
+}
+.figure {
+  margin: 34px 0 22px; color: var(--accent); font-weight: 760; font-size: 232px; letter-spacing: -0.045em;
+  line-height: 1; font-variant-numeric: lining-nums; white-space: nowrap;
+}
+.figure .tilde { font-weight: 600; margin-right: 0.03em; position: relative; top: -0.12em; }
+.figure .cur { font-size: 92px; font-weight: 700; letter-spacing: -0.01em; margin-left: 0.18em; }
+.figure-sub { font-size: 50px; font-weight: 650; color: var(--ink-2); letter-spacing: -0.02em; }
+
+/* 7 close */
+#s7 .mark { width: 112px; height: 126px; margin-bottom: 40px; }
+#s7 .name { font-size: 84px; }
+.cta { display: flex; align-items: center; gap: 40px; margin-top: 84px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 18px; padding: 26px 44px 26px 48px; border-radius: 999px;
+  background: var(--accent); color: #FFFFFF; font-size: 44px; font-weight: 700; letter-spacing: -0.015em;
+}
+.btn svg.i { font-size: 44px; stroke-width: 2.4; }
+.url { font-size: 44px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+
+/* ---------- preview player (not in rendered frames) */
+#player {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 14px; align-items: center;
+  padding: 12px 18px; background: rgba(11, 26, 48, .92); color: #E2EAF6;
+  font: 14px/1.2 system-ui, sans-serif;
+}
+#player button {
+  font: inherit; color: #002657; background: #E2EAF6; border: 0; border-radius: 999px;
+  padding: 7px 16px; cursor: pointer; min-width: 74px;
+}
+#player input[type=range] { flex: 1; min-width: 0; }
+#player output { font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; }
+body.render #player { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- 24-unit stroke icons; phone and arrow outlines follow Lucide (ISC licence) -->
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-complaint" viewBox="0 0 24 24"><path d="M20 14a2 2 0 0 1-2 2H9l-5 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M12 6.5v4"/><path d="M12 13.2v.01"/></symbol>
+  <symbol id="i-callback" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><path d="M13.6 2.6a7 7 0 0 1 7 6.6"/><path d="m18.3 7.4 2.3 2.3 2.2-2.4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+  <symbol id="mark" viewBox="0 0 64 72"><path style="fill:var(--accent);stroke:var(--accent);stroke-width:3;stroke-linejoin:round" d="M32 4 57 12.6v20.8c0 16.2-10.3 28.4-25 34.6C17.3 61.8 7 49.6 7 33.4V12.6Z"/><path style="fill:none;stroke:#FFFFFF;stroke-width:6;stroke-linecap:round;stroke-linejoin:round" d="m20.5 36 8 8 15.5-16"/></symbol>
+</svg>
+
+<div id="stage">
+
+  <!-- 1 · 0:00–0:04 · hook -->
+  <section class="scene" id="s1">
+    <div class="center">
+      <p class="headline t" id="hook">Sales offers to upset customers <br>can lose money.</p>
+    </div>
+  </section>
+
+  <!-- 2 · 0:04–0:09 · reveal (horizontal wipe) -->
+  <section class="scene" id="s2">
+    <div class="center" id="s2-wipe">
+      <svg class="mark"><use href="#mark"/></svg>
+      <div class="stack">
+        <div class="name t" id="s2-name"><span class="brand">MAINGAU</span> Guardian</div>
+        <p class="t" id="s2-tag">The AI that knows when <em>NOT</em> to sell.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · 0:09–0:14 · value 1 -->
+  <section class="scene" id="s3">
+    <div class="center">
+      <div class="stack">
+        <p class="headline t" id="s3-head">Recover upset customers <br>before selling to them.</p>
+        <div class="card" id="s3-card">
+          <div class="who-row">
+            <div class="avatar"><svg class="i"><use href="#i-user"/></svg></div>
+            <div class="who">
+              <div class="cust-name t">Sample customer</div>
+              <div class="chip"><svg class="i"><use href="#i-complaint"/></svg><span class="t">Open complaint</span></div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="action-row">
+            <span class="tag t">Service first</span>
+            <div class="callback" title="Callback"><svg class="i"><use href="#i-callback"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · 0:14–0:19 · value 2 -->
+  <section class="scene" id="s4">
+    <div class="center">
+      <div class="stack">
+        <p class="headline t" id="s4-head">Every blocked offer comes <br>with a clear reason.</p>
+        <div class="card" id="s4-list">
+          <div class="check-row" id="s4-r1"><span class="dot"><svg class="i"><use href="#i-check"/></svg></span><span class="t">Product eligible</span></div>
+          <div class="check-row" id="s4-r2"><span class="dot"><svg class="i"><use href="#i-check"/></svg></span><span class="t">No complaints</span></div>
+          <div class="check-row blocked" id="s4-r3"><span class="dot"><svg class="i"><use href="#i-ban"/></svg></span><span class="t">Consent withdrawn: offer blocked</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · 0:19–0:24 · value 3 -->
+  <section class="scene" id="s5">
+    <div class="center">
+      <div class="stack">
+        <p class="headline t" id="s5-head">Compare alternatives before <br>anything reaches a customer.</p>
+        <div id="s5-chart">
+          <div id="s5-cap" class="t">Expected value</div>
+          <div class="plot">
+            <div class="bar" id="bar-a"></div>
+            <div class="bar" id="bar-b"></div>
+            <div id="s5-pill"><span><svg class="i"><use href="#i-check"/></svg><b class="t" style="font-weight:inherit">Recommended</b></span></div>
+          </div>
+          <div class="bar-label t" id="lab-a">Sales offer</div>
+          <div class="bar-label t" id="lab-b">Service first</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · 0:24–0:27 · proof -->
+  <section class="scene" id="s6">
+    <div class="center">
+      <span class="est t">Model estimate</span>
+      <div class="figure t"><span class="tilde">~</span>7,959<span class="cur"> EUR</span></div>
+      <div class="figure-sub t">protected vs. sales-first</div>
+    </div>
+  </section>
+
+  <!-- 7 · 0:27–0:30 · close -->
+  <section class="scene" id="s7">
+    <div class="center">
+      <svg class="mark"><use href="#mark"/></svg>
+      <div class="name t" id="s7-name"><span class="brand">MAINGAU</span> Guardian</div>
+      <div class="cta" id="s7-cta">
+        <span class="btn"><span class="t">Book a live demo</span><svg class="i"><use href="#i-arrow"/></svg></span>
+        <span class="url t" id="url">[URL]</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="player">
+  <button id="play" type="button">Play</button>
+  <input id="scrub" type="range" min="0" max="29.967" step="any" value="0" aria-label="Time">
+  <output id="clock">0:00.0</output>
+</div>
+<audio id="music" src="music.wav" preload="auto"></audio>
+
+<script>
+"use strict";
+const DURATION = 30;
+const params = new URLSearchParams(location.search);
+const RENDER = params.has("render");
+const $ = (id) => document.getElementById(id);
+const stage = $("stage");
+
+if (RENDER) document.body.classList.add("render");
+if (params.get("url")) $("url").textContent = params.get("url");
+if (params.get("bg")) stage.style.setProperty("--bg", params.get("bg"));
+if (params.get("accent")) stage.style.setProperty("--accent", params.get("accent"));
+
+// ---------------------------------------------------------------- timing
+// Scene starts. Cross-dissolves are 0.5 s, centred on each boundary; 0:04 is the wipe instead.
+const BOUNDS = [0, 4, 9, 14, 19, 24, 27, 30];
+const HALF = 0.25;
+const WIPE = { at: 4.0, dur: 0.6, feather: 140 };
+
+// In-scene builds: [start, duration] in seconds. Inside a scene a line leaves before the next
+// one comes in, so no settled frame shows more than eight words.
+const BUILD = {
+  "hook":     { in: [0.15, 0.6], out: [3.2, 0.5] },
+  "s2-name":  { out: [6.5, 0.25] },
+  "s2-tag":   { in: [6.75, 0.3] },
+  "s3-head":  { out: [11.3, 0.3] },
+  "s3-card":  { in: [11.6, 0.4] },
+  "s4-head":  { out: [16.2, 0.3] },
+  "s4-list":  { in: [16.5, 0.4] },
+  "s5-head":  { out: [21.2, 0.3] },
+  "s5-chart": { in: [21.5, 0.4] },
+  "s5-pill":  { in: [21.75, 0.3] },
+  "s7-cta":   { in: [27.8, 0.3] },   // brief: 0:28.5; moved so the CTA stays readable for 2 s
+};
+
+// ---------------------------------------------------------------- easing
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lin = (t, a, b) => clamp((t - a) / (b - a));
+const sine = (x) => -(Math.cos(Math.PI * x) - 1) / 2;
+const outCubic = (x) => 1 - Math.pow(1 - x, 3);
+const smoothstep = (x) => x * x * (3 - 2 * x);
+
+// Cross-dissolve with a slight S-curve: the outgoing scene starts fading first and the incoming
+// one settles last, so the midpoint shows two light layers instead of a muddy 50/50 mix.
+const dissolveIn = (p) => smoothstep(clamp(p * 1.25 - 0.25));
+const dissolveOut = (p) => 1 - smoothstep(clamp(p * 1.25));
+
+function sceneOpacity(i, t) {
+  const start = BOUNDS[i], end = BOUNDS[i + 1];
+  if (i === 0) return t < 4 ? 1 : 0;                      // hook fades its own text
+  let o = i === 1 ? (t >= WIPE.at ? 1 : 0)                // reveal: the wipe does the entry
+                  : dissolveIn(lin(t, start - HALF, start + HALF));
+  if (end < DURATION) o *= dissolveOut(lin(t, end - HALF, end + HALF));
+  return o;
+}
+
+function build(el, t, spec) {
+  let o = 1, y = 0;
+  if (spec.in) {
+    const p = lin(t, spec.in[0], spec.in[0] + spec.in[1]);
+    o *= sine(p);
+    y += (1 - outCubic(p)) * 18;
+  }
+  if (spec.out) {
+    const q = lin(t, spec.out[0], spec.out[0] + spec.out[1]);
+    o *= 1 - sine(q);
+    y -= sine(q) * 10;
+  }
+  el.style.opacity = o.toFixed(4);
+  el.style.transform = y ? `translateY(${y.toFixed(2)}px)` : "";
+}
+
+// ---------------------------------------------------------------- render
+let lockup = null;     // left/right edge of the reveal lockup, measured once
+let wipeEdge = null;   // current wipe edge in stage px (null when no wipe is running)
+
+function measureLockup() {
+  const s2 = $("s2"); const prev = s2.style.visibility;
+  s2.style.visibility = "visible";
+  const r = $("s2-name").getBoundingClientRect(), base = stage.getBoundingClientRect();
+  const k = base.width / 1920;
+  lockup = { left: (r.left - base.left) / k, right: (r.right - base.left) / k };
+  s2.style.visibility = prev;
+}
+
+function renderAt(t) {
+  if (!lockup) measureLockup();
+  document.querySelectorAll(".scene").forEach((s, i) => {
+    const o = sceneOpacity(i, t);
+    s.style.opacity = o.toFixed(4);
+    s.style.visibility = o > 0 ? "visible" : "hidden";
+  });
+  for (const [id, spec] of Object.entries(BUILD)) build($(id), t, spec);
+
+  // 0:04 horizontal wipe, left to right, soft edge
+  const wp = lin(t, WIPE.at, WIPE.at + WIPE.dur);
+  const w = $("s2-wipe");
+  if (t >= WIPE.at && wp < 1) {
+    const F = WIPE.feather;
+    wipeEdge = lockup.left - F + sine(wp) * (lockup.right - lockup.left + 2 * F);
+    const m = `linear-gradient(90deg, #000 ${(wipeEdge - F).toFixed(1)}px, transparent ${wipeEdge.toFixed(1)}px)`;
+    w.style.maskImage = m; w.style.webkitMaskImage = m;
+  } else {
+    wipeEdge = null;
+    w.style.maskImage = ""; w.style.webkitMaskImage = "";
+  }
+
+  // value 3: bars grow, then the recommended one takes the accent
+  const H = 340;
+  const ga = outCubic(lin(t, 21.5, 22.25)), gb = outCubic(lin(t, 21.58, 22.33));
+  const hb = H * gb;
+  $("bar-a").style.height = (H * 0.36 * ga).toFixed(1) + "px";
+  $("bar-b").style.height = hb.toFixed(1) + "px";
+  const hl = sine(lin(t, 21.9, 22.25)) * 100;
+  $("bar-b").style.background = `color-mix(in srgb, var(--accent) ${hl.toFixed(1)}%, var(--line-strong))`;
+  $("lab-b").style.color = `color-mix(in srgb, var(--accent) ${hl.toFixed(1)}%, var(--ink-2))`;
+  $("s5-pill").style.bottom = (hb + 22).toFixed(1) + "px";
+
+  // value 2: the blocked row settles onto an accent tint
+  const tint = sine(lin(t, 16.9, 17.25)) * 100;
+  $("s4-r3").style.background = `color-mix(in srgb, var(--accent-tint) ${tint.toFixed(1)}%, transparent)`;
+}
+
+// What a viewer can see: every text unit with its word count and effective opacity.
+function measureText() {
+  const base = stage.getBoundingClientRect(), k = base.width / 1920;
+  return [...document.querySelectorAll(".t")].map((el) => {
+    let vis = 1;
+    for (let n = el; n && n !== stage; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      if (cs.visibility === "hidden" || cs.display === "none") { vis = 0; break; }
+      vis *= parseFloat(cs.opacity);
+    }
+    if (vis > 0 && wipeEdge !== null && el.closest("#s2")) {
+      const r = el.getBoundingClientRect();
+      const left = (r.left - base.left) / k, width = r.width / k;
+      vis *= clamp((wipeEdge - WIPE.feather / 2 - left) / width);
+    }
+    const text = el.textContent.replace(/\s+/g, " ").trim();
+    return { id: el.id || text, text, words: text.split(" ").length, vis };
+  });
+}
+
+window.renderAt = renderAt;
+window.measureText = measureText;
+window.videoReady = document.fonts.ready.then(() => {
+  renderAt(0);
+  return document.fonts.check('700 84px "Plus Jakarta Sans"');
+});
+
+// ---------------------------------------------------------------- preview player
+if (!RENDER) {
+  const music = $("music"), scrub = $("scrub"), clock = $("clock"), play = $("play");
+  let playing = false, t0 = 0, wall0 = 0;
+  const fit = () => {
+    const k = Math.min(innerWidth / 1920, (innerHeight - 56) / 1080);
+    stage.style.transform = `translate(${(innerWidth - 1920 * k) / 2}px, ${(innerHeight - 56 - 1080 * k) / 2}px) scale(${k})`;
+  };
+  const show = (t) => {
+    renderAt(t); scrub.value = t;
+    clock.textContent = `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+  };
+  const audioOk = () => music.readyState >= 2 && !music.error;
+  // A server without range requests (python -m http.server) cannot seek: then sound only plays from 0:00.
+  const canSeek = (t) => [...Array(music.seekable.length).keys()]
+    .some((i) => music.seekable.start(i) <= t && t <= music.seekable.end(i));
+  let audioClock = false;
+  const tick = () => {
+    if (!playing) return;
+    let t = audioClock && !music.paused ? music.currentTime : t0 + (performance.now() - wall0) / 1000;
+    if (t >= DURATION) { t = DURATION - 1 / 30; playing = false; play.textContent = "Replay"; music.pause(); }
+    show(t);
+    requestAnimationFrame(tick);
+  };
+  play.onclick = () => {
+    if (playing) { playing = false; music.pause(); play.textContent = "Play"; return; }
+    t0 = +scrub.value >= DURATION - 0.1 ? 0 : +scrub.value; wall0 = performance.now();
+    playing = true; play.textContent = "Pause";
+    audioClock = audioOk() && (t0 === 0 || canSeek(t0));
+    if (audioClock) { music.currentTime = t0; music.play().catch(() => { audioClock = false; }); }
+    requestAnimationFrame(tick);
+  };
+  scrub.oninput = () => { playing = false; music.pause(); play.textContent = "Play"; show(+scrub.value); };
+  addEventListener("resize", fit);
+  fit();
+  window.videoReady.then(() => show(0));
+}
+</script>
+</body>
+</html>
