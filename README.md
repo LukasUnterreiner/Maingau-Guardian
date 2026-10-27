@@ -96,10 +96,12 @@ live data from the backend:
   the selection is in the page address (`?region=DE-HE&city=Darmstadt`). Data from `GET /api/marketing/regions`.
   Reporting only: the region is never used for a recommendation.
 * **Approval queue**: all decisions by status (pending, approved, rejected) with filters; select a row to see the
-  full decision and approve or reject it.
+  full decision and approve or reject it. **Export to Excel** downloads the filtered list as an .xlsx file (numbers
+  with € and % formats, header row frozen, filters on).
 * **Customers**: Lighty's decision for one customer, the options it compared (blocked ones greyed out with their
   rule codes) and **Ask Lighty**, the employee copilot chat with suggested questions, warnings, fact chips,
-  confidence and the German wording box (copy only, never send).
+  confidence and the German wording box (copy only, never send). The app asks Lighty for English answers
+  (`LANGUAGE` in `frontend/lighty_api.py`), like the rest of the app; the wording for the customer stays German.
 
 Employees sign in with a token from `EMPLOYEE_TOKENS`. The app calls the backend from the server side, so CORS does
 not apply. Everything the API returns is HTML-escaped before it is shown.

@@ -523,7 +523,7 @@ def suggestion(resp: dict, key: str) -> None:
         return
     label = "Suggested opening" if msg.get("kind") == "call_opening" else "Suggested draft"
     with st.container(key=f"suggestion-{key}"):
-        st.html(f'<span class="lt-suggestion__label">{label} · review before use</span>')
+        st.html(f'<span class="lt-suggestion__label">{label} for the customer, in German · review before use</span>')
         st.code(msg["text"], language=None, wrap_lines=True)
 
 
