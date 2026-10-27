@@ -34,7 +34,7 @@ elif c.get("has_service_issue"):
     facts.append('<span class="lt-pill lt-pill--issue">Service issue</span>')
 facts.append(f'<span class="lt-small">{ui.esc(c.get("city"))} · {ui.esc(", ".join(c.get("business_lines") or []))} · '
              f'customer since {ui.esc((c.get("customer_since") or "")[:4])}</span>')
-ui.html_block(f'<div class="lt-row" style="gap: 8px;">{"".join(facts)}</div>')
+ui.html_block(f'<div class="lt-row" style="gap: 8px; padding-bottom: 30px;">{"".join(facts)}</div>')
 
 rec = ui.load(ui.recommendation, cid)
 ui.html_block(ui.risk_card(ui.load(ui.customer, cid), rec, ui.risk_levels(index)))
