@@ -547,6 +547,38 @@ def test_customer_wording_is_safe_and_matches_tonality(copilot_client, portfolio
     assert "<" not in b["response"] and ">" not in b["response"]
 
 
+def test_email_request_for_a_call_customer_gets_the_call_guide(copilot_client):
+    # MG-100006 asked about a tariff; Lighty answers by service call, so an e-mail request gets the call guide and why
+    b = chat(copilot_client, "MG-100006", "write me a script for an email", lang="en").json()
+    assert "draft" in b["intents"]
+    m = b["suggested_customer_message"]
+    assert (m["kind"], m["channel"], m["source"]) == ("written_draft", "service_call", "template")
+    assert m["text"].startswith("Gesprächsleitfaden") and m["requires_human_approval"] is True
+    assert "You asked for an email, but Lighty recommends the channel service call" in b["response"]
+    de = chat(copilot_client, "MG-100006", "Schreib mir eine E-Mail für den Kunden").json()
+    assert "Sie haben nach einer E-Mail gefragt, Lighty empfiehlt für diesen Kunden aber den Kanal Service-Anruf" \
+        in de["response"]
+    # asking for the channel Lighty recommends needs no explanation
+    call = chat(copilot_client, "MG-100006", "Gib mir ein Skript für den Anruf").json()
+    assert call["suggested_customer_message"]["text"].startswith("Gesprächsleitfaden")
+    assert "gefragt" not in call["response"]
+
+
+def test_ai_wording_never_replaces_a_requested_draft(fake_lighty):
+    def reply(messages):
+        nba_id = re.search(r"ENGINE DECISION \(authoritative, do not change\): \[(F\d+)\]",
+                           messages[-1]["content"]).group(1)
+        return json.dumps({"answer": "Answer the tariff inquiry by service call.",
+                           "suggested_customer_message": "Guten Tag, vielen Dank für Ihre Anfrage.",
+                           "fact_ids": [nba_id], "uncertainty": None})
+    lt, _ = fake_lighty(reply)
+    r = lt.copilot.chat(emp(), "MG-100006", "write me a script for an email", None, "en")
+    assert r["answer_origin"]["response"] == "llm" and r["answer_origin"]["suggested_customer_message"] == "template"
+    assert r["suggested_customer_message"]["text"].startswith("Gesprächsleitfaden")
+    assert r["response"].startswith("Answer the tariff inquiry")
+    assert r["response"].endswith("Lighty only writes wording for the channel it recommends.")
+
+
 def test_markup_from_llm_is_rejected(fake_lighty):
     lt, _ = fake_lighty(json.dumps({"answer": "<script>alert(1)</script> Erst klären.",
                                     "suggested_customer_message": "<b>Hallo</b>", "fact_ids": ["F1"],

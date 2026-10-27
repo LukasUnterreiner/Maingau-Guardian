@@ -682,12 +682,20 @@ def suggestion(resp: dict, key: str) -> None:
     msg = resp.get("suggested_customer_message")
     if not msg or not msg.get("text"):
         return
-    opening = msg.get("kind") == "call_opening"
-    label = tr(f'{"Suggested opening" if opening else "Suggested draft"} for the customer, in German · review before use',
-               f'{"Vorschlag für den Gesprächseinstieg" if opening else "Entwurf"} für den Kunden · vor Verwendung prüfen')
+    if msg.get("kind") == "call_opening":
+        label = tr("Suggested opening for the customer, in German · review before use",
+                   "Vorschlag für den Gesprächseinstieg · vor Verwendung prüfen")
+    elif msg.get("channel") in ("service_call", "outbound_call"):
+        label = tr("Call guide for the employee, in German · review before use",
+                   "Gesprächsleitfaden · vor Verwendung prüfen")
+    else:
+        label = tr(f"Draft · {channel(msg.get('channel'))} · in German · review before use",
+                   f"Entwurf · {channel(msg.get('channel'))} · vor Verwendung prüfen")
+    # an e-mail draft comes with its subject line
+    text = f"Betreff: {msg['subject']}\n\n{msg['text']}" if msg.get("subject") else msg["text"]
     with st.container(key=f"suggestion-{key}"):
         st.html(f'<span class="lt-suggestion__label">{label}</span>')
-        st.code(msg["text"], language=None, wrap_lines=True)
+        st.code(text, language=None, wrap_lines=True)
 
 
 # ------------------------------------------------------------------ churn risk

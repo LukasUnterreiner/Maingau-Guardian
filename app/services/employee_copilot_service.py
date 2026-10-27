@@ -33,7 +33,7 @@ from app.services.conversation_service import ConversationStore
 from app.services.customer_context_service import CustomerContext, CustomerContextService, Fact
 from app.services.llm_client import LLMUnavailable
 from app.services.recommendation_engine import NO_CONTACT
-from app.services.rule_labels import humanize, labels
+from app.services.rule_labels import humanize, labels, name as code_name
 
 if TYPE_CHECKING:
     from app.services.lighty import Lighty
@@ -58,7 +58,8 @@ INTENT_PATTERNS: list[tuple[str, str]] = [
     ("why", r"warum|wieso|weshalb|\bwhy\b|begründ|reason|explain|erklär"),
     ("value", r"\bclv\b|kundenwert|customer value|\bwert\b|\bvalue\b|marge|margin|umsatz|revenue|profit|lohnt"),
     ("avoid", r"vermeid|avoid|nicht (sagen|tun|ansprechen|machen)|don't|do not|vorsicht|careful|aufpassen|no.?go"),
-    ("draft", r"entwurf|draft|nachricht|message|e-?mail|formulier|schreib|write|text für|text for|\bsms\b|antwort"),
+    ("draft", r"entwurf|draft|nachricht|message|e-?mail|formulier|schreib|write|text für|text for|\bsms\b|antwort|"
+              r"skript|script|leitfaden|talking points"),
     ("history", r"historie|history|früher|frueher|bisher|previous|vorher|letzte[nrs]? (kontakt|angebot)|past"),
 ]
 INTENT_RES = [(name, re.compile(p, re.IGNORECASE)) for name, p in INTENT_PATTERNS]
@@ -109,6 +110,14 @@ MISSING_INFO: list[tuple[re.Pattern, str, str]] = [
      "Angebote von Wettbewerbern sind im Datensatz nicht enthalten.",
      "Competitor offers are not in the dataset."),
 ]
+# a draft for a named channel: Lighty writes only for the channel it recommends and says so when they differ
+ASKED_CHANNEL: list[tuple[re.Pattern, set[str], str, str]] = [
+    (re.compile(r"e-?mail|\bmail\b", re.I), {"service_email", "newsletter_email"}, "einer E-Mail", "an email"),
+    (re.compile(r"\bsms\b", re.I), {"sms"}, "einer SMS", "an SMS"),
+    (re.compile(r"anruf|telefon|\bcall\b|phone", re.I), {"service_call", "outbound_call"}, "einem Anruf", "a call"),
+    (re.compile(r"\bpush\b", re.I), {"app_push"}, "einer Push-Nachricht", "a push message"),
+]
+CALL_CHANNELS = {"service_call", "outbound_call"}
 PRICE_RE = re.compile(r"preis|price|kost|cost|wie viel|how much|günstiger|guenstiger|cheaper|konditionen|terms|tarif", re.I)
 
 TOPICS_BY_INTENT: dict[str, set[str]] = {
@@ -153,6 +162,7 @@ class Composed:
     draft: dict[str, Any] | None
     gaps: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    pinned: list[str] = field(default_factory=list)  # shown after an AI answer too
 
     @property
     def fact_ids(self) -> list[str]:
@@ -441,6 +451,25 @@ class EmployeeCopilotService:
             intents = []  # only the missing-information answer
         want_opening = bool({"approach", "opening", "service", "briefing", "general"} & set(intents))
         want_draft = "draft" in intents
+        pinned: list[str] = []
+        if want_draft and not gaps:
+            rec = ctx.recommendation
+            asked = next(((wanted, de, en) for rx, wanted, de, en in ASKED_CHANNEL if rx.search(message)), None)
+            if rec["recommended_action"] == NO_CONTACT:
+                pinned.append(L(lang, "Lighty empfiehlt für diesen Kunden keinen Kontakt, deshalb gibt es keinen "
+                                      "Entwurf.",
+                                "Lighty recommends no contact for this customer, so there is nothing to draft."))
+            elif asked and rec["channel"] not in asked[0]:
+                call = rec["channel"] in CALL_CHANNELS
+                pinned.append(L(lang, f"Sie haben nach {asked[1]} gefragt, Lighty empfiehlt für diesen Kunden aber "
+                                      f"den Kanal {code_name(rec['channel'], 'de')}. Der Entwurf unten ist deshalb "
+                                      + ("ein Gesprächsleitfaden. " if call else "für diesen Kanal. ")
+                                      + "Lighty schreibt nur für den empfohlenen Kanal.",
+                                f"You asked for {asked[2]}, but Lighty recommends the channel "
+                                f"{code_name(rec['channel'])} for this customer, so the draft below is "
+                                + ("a call guide. " if call else "for that channel. ")
+                                + "Lighty only writes wording for the channel it recommends."))
+            points += [Point(t, self._ids(ctx, "nba", "communication")) for t in pinned]
 
         if "compensation" in intents:
             if issues:
@@ -565,7 +594,7 @@ class EmployeeCopilotService:
                 unique.append(p)
         return Composed(unique, self.opening(ctx) if want_opening else None,
                         self.written_draft(ctx) if want_draft else None,
-                        [L(lang, de, en) for de, en in gaps], notes)
+                        [L(lang, de, en) for de, en in gaps], notes, pinned)
 
     # ============================================================ uncertainty
     def _uncertainty(self, ctx: CustomerContext, facts: list[Fact], composed: Composed, intents: list[str],
@@ -686,7 +715,7 @@ class EmployeeCopilotService:
                 ) -> dict[str, Any]:
         nba_ids = self._ids(ctx, "nba", "restrictions")
         if llm:
-            response = humanize(llm["answer"], lang)
+            response = humanize("\n".join([llm["answer"]] + composed.pinned), lang)
             used = list(dict.fromkeys(llm["fact_ids"] + nba_ids))
         else:
             response = composed.text()
@@ -697,7 +726,8 @@ class EmployeeCopilotService:
         message = composed.draft or composed.opening
         if message:
             used = list(dict.fromkeys(used + message["fact_ids"]))
-        if llm and llm.get("message"):
+        # the AI may reword a spoken opening; an approved draft (template) that the employee asked for stays as it is
+        if llm and llm.get("message") and not composed.draft:
             base = composed.opening or self.opening(ctx)
             message = {**base, "text": llm["message"], "source": "llm", "kind": "call_opening",
                        "validation": self.lighty.ai.validate_message(llm["message"], ctx.situation.tonality,

@@ -581,7 +581,11 @@ Response fields: `conversation_id`, `customer_id`, `turn`, `language`, `intents`
 `confidence_or_uncertainty`, `answer_origin`, `answer_parts`, `created_at`.
 
 `suggested_customer_message.kind` is `call_opening` (spoken opening for the employee) or `written_draft` (approved
-template for the engine's action, asked for with words like "Entwurf"/"draft"). It always has
+template for the engine's action, asked for with words like "Entwurf"/"draft"/"Skript"/"script"). A `written_draft`
+is always for the recommended `channel`: an e-mail comes with a `subject`, a call (`service_call`, `outbound_call`) is a
+call guide without one. If the employee asks for another channel ("write an email" when Lighty recommends a call),
+`response` says so, and with AI it is added after the AI's answer. The AI may reword a `call_opening` (`source: "llm"`)
+but never replaces a `written_draft` (always `source: "template"`). It always has
 `requires_human_approval: true` and `auto_send: false`; `validation` shows the checks (no numbers, prices,
 percentages or urgency; Du/Sie).
 
