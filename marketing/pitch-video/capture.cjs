@@ -17,12 +17,32 @@ const path = require("path");
 const DIR = __dirname;
 const VIEW = { width: 1600, height: 900 };
 const CUSTOMER = "MG-100448";                       // joined Oct 2025, price guarantee ends, open complaint
+const STATE = "DE-HE";                              // Hessen
+const CITY = "Hanau";                               // the customer's city
 const QUESTION = "How can I retain this customer?";
 
 function args(argv) {
   const a = { app: "http://127.0.0.1:8501", api: "http://127.0.0.1:8000", out: path.join(DIR, "demo-frames") };
   for (let i = 0; i < argv.length; i += 2) a[argv[i].replace(/^--/, "")] = argv[i + 1];
   return a;
+}
+
+// The middle of a city's pillar on the map. The click targets are one trace: every city's foot, then the middle of
+// every pillar, then every top. A foot can sit on a neighbour's foot (Hanau and Obertshausen), the middle cannot.
+async function cityPoint(page, api, city) {
+  const r = await (await fetch(`${api}/api/marketing/regions?level=city`)).json();
+  const c = r.regions.find((x) => x.id === city);
+  const b = await page.evaluate(([lon, lat]) => {
+    const foot = [...document.querySelectorAll(".scattergeo .point")].find((e) => e.__data__ && e.__data__.lonlat &&
+      Math.abs(e.__data__.lonlat[0] - lon) < 1e-6 && Math.abs(e.__data__.lonlat[1] - lat) < 1e-6);
+    if (!foot) return null;
+    const all = [...foot.parentNode.querySelectorAll(".point")];
+    const middle = all.find((e) => e.__data__.i === foot.__data__.i + all.length / 3);
+    const m = middle.getBoundingClientRect();
+    return { x: m.x + m.width / 2, y: m.y + m.height / 2 };
+  }, [c.longitude, c.latitude]);
+  if (!b) throw new Error(`${city} is not on the map`);
+  return b;
 }
 
 // Row of the customer in the churn table: same filter and order as frontend/views/risk.py.
@@ -84,18 +104,70 @@ async function main() {
   const GRID = ".dvn-scroller";
   const mainTop = () => page.$eval(MAIN, (el) => el.scrollTop);
 
-  // 1 · churn risk page
-  await page.goto(`${opts.app}/risk`);
+  // 1 · regions: Germany, then a click on Hessen, then a click on Hanau
+  const MAP = ".st-key-card-map";
+  await page.goto(`${opts.app}/regions`);
+  await page.locator(".choroplethlocation").first().waitFor();
+  await idle();
+  await page.mouse.move(1500, 40);
+  start("regions");
+  await shot();
+  await box("map", page.locator(MAP));
+  await box("headline", page.locator("h1").filter({ hasText: "at risk" }));
+  const state = await page.evaluate((id) => [...document.querySelectorAll(".choroplethlocation")]
+    .find((e) => e.__data__ && (e.__data__.loc || e.__data__.id) === id).getBoundingClientRect().toJSON(), STATE);
+  // a spot inside the state whose tooltip is the state's own (pillars of its cities rise into its north)
+  let sx = 0, sy = 0;
+  for (const [fx, fy] of [[0.78, 0.45], [0.7, 0.3], [0.25, 0.35], [0.8, 0.6], [0.5, 0.5]]) {
+    sx = state.x + state.width * fx; sy = state.y + state.height * fy;
+    await page.mouse.move(sx, sy, { steps: 8 });
+    await page.waitForTimeout(600);
+    const tip = await page.locator(".hoverlayer").textContent();
+    if (tip.includes("Hessen")) break;
+  }
+  start("state-hover");
+  await shot();
+  clip.boxes.click = { x: +sx.toFixed(1), y: +sy.toFixed(1), w: 0, h: 0 };
+  await page.mouse.click(sx, sy);
+  await page.waitForURL(new RegExp(`region=${STATE}`));
+  await idle();
+  await page.waitForTimeout(600);
+  start("state");
+  await shot();
+  await box("map", page.locator(MAP));
+  const cp = await cityPoint(page, opts.api, CITY);
+  await page.mouse.move(cp.x, cp.y, { steps: 8 });          // over the pillar: the tooltip shows its amount
+  await page.waitForTimeout(600);
+  start("city-hover");
+  await shot();
+  clip.boxes.click = { x: +cp.x.toFixed(1), y: +cp.y.toFixed(1), w: 0, h: 0 };
+  await page.mouse.click(cp.x, cp.y);
+  await page.waitForURL(new RegExp(`city=${CITY}`));
+  await idle();
+  await page.waitForTimeout(600);
+  start("city");
+  await shot();
+  await box("map", page.locator(MAP));
+  await box("row", page.locator(".lt-reglist__row.is-on"));
+  const nav = page.locator('[data-testid="stSidebarNav"] a').filter({ hasText: "Churn risk" });
+  await box("nav", nav);
+
+  // 2 · churn risk page, opened from the sidebar
+  const nb = await nav.boundingBox();
+  await page.mouse.move(nb.x + 60, nb.y + nb.height / 2, { steps: 8 });
+  await page.waitForTimeout(300);
+  start("nav-hover");
+  await shot();
+  await page.mouse.click(nb.x + 60, nb.y + nb.height / 2);
   await page.getByText("customers are likely to cancel").waitFor();
   await idle();
-  await page.mouse.move(980, 300);
   start("risk");
   await shot();
   await box("headline", page.locator("h1").filter({ hasText: "likely to cancel" }));
   await box("tiles", page.locator(".lt-tiles"));
   await box("grid", page.locator('[data-testid="stDataFrame"]'));
 
-  // 2 · bring the whole table into view, then scroll the table to the customer
+  // 3 · bring the whole table into view, then scroll the table to the customer
   const grid0 = await page.locator('[data-testid="stDataFrame"]').boundingBox();
   start("risk-scroll");
   await scrollTo(MAIN, grid0.y + grid0.height - VIEW.height + 24, 16);
@@ -110,7 +182,7 @@ async function main() {
   clip.boxes.row = { x: grid.x, y: +(rowY - ROW / 2).toFixed(1), w: grid.w, h: ROW };
   clip.boxes.click = { x: grid.x + 18, y: +rowY.toFixed(1), w: 0, h: 0 };
 
-  // 3 · select the customer's row: the churn card appears under the table
+  // 4 · select the customer's row: the churn card appears under the table
   await page.mouse.move(grid.x + 18, rowY, { steps: 4 });
   await page.mouse.click(grid.x + 18, rowY);
   await page.getByRole("button", { name: `Open ${CUSTOMER}` }).waitFor({ timeout: 15000 });
@@ -118,7 +190,7 @@ async function main() {
   start("row-selected");
   await shot();
 
-  // 4 · scroll down to the churn card
+  // 5 · scroll down to the churn card
   const card = page.locator("section.lt-card").filter({ hasText: "Will this customer cancel?" });
   const cardBox = await card.first().boundingBox();
   start("card-scroll");
@@ -128,14 +200,14 @@ async function main() {
   await box("why", card.getByText("Price guarantee ends within 90 days"));
   await box("open", page.getByRole("button", { name: `Open ${CUSTOMER}` }));
 
-  // 5 · open the customer
+  // 6 · open the customer
   await page.getByRole("button", { name: `Open ${CUSTOMER}` }).click();
   await page.locator("h1").filter({ hasText: CUSTOMER }).waitFor();
   await idle();
   start("customer");
   await shot();
 
-  // 6 · scroll to Lighty's recommendation
+  // 7 · scroll to Lighty's recommendation
   const hero = page.locator(".lt-hero").first();
   const heroBox = await hero.boundingBox();
   start("hero-scroll");
@@ -143,7 +215,7 @@ async function main() {
   await box("hero", hero);
   await box("hero-title", page.locator(".lt-hero__title"));
 
-  // 7 · scroll to Ask Lighty and type the question
+  // 8 · scroll to Ask Lighty and type the question
   const ask = page.locator(".st-key-ask-lighty");
   const askBox = await ask.boundingBox();
   start("ask-scroll");
@@ -160,7 +232,7 @@ async function main() {
   }
   await box("input", input);
 
-  // 8 · send it and wait for Lighty's answer
+  // 9 · send it and wait for Lighty's answer
   await page.keyboard.press("Enter");
   start("sending");
   for (let i = 0; i < 3; i++) { await page.waitForTimeout(60); await shot(); }

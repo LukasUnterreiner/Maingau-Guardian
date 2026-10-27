@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Renders lighty-pitch.html into the 30-second pitch video.
+// Renders lighty-pitch.html into the 40-second pitch video.
 //
 //   node capture.cjs                        # first: record the real app into demo-frames/ (app must be running)
-//   node render.cjs                         # → lighty-pitch-30s.mp4, storyboard.png, timing-report.md
+//   node render.cjs                         # → lighty-pitch-40s.mp4, storyboard.png, timing-report.md
 //   node render.cjs --bg "#FFFFFF" --accent "#0069F1" --out other.mp4
 //   node render.cjs --stills ./frames       # key frames only, no video (fast check)
 //
@@ -16,22 +16,22 @@ const { spawn, execFileSync } = require("child_process");
 
 const DIR = __dirname;
 const FPS = 30;
-const DURATION = 30;
+const DURATION = 40;
 const FRAMES = FPS * DURATION;
-const DISSOLVES = [7.5, 26.5];   // centres of the 0.5 s cross-dissolves
+const DISSOLVES = [8.0, 35.0];   // centres of the 0.5 s scene changes where two scenes overlap
 const MAX_WORDS = 8;
 const MIN_READ = 3.0;
 
 // Storyboard frames: one per beat.
 const KEY_FRAMES = [
-  [2.0, "The problem"], [6.0, "Lighty"], [9.6, "Churn risk page"],
-  [11.6, "Scroll to the customer"], [12.5, "Click: row selected"], [14.4, "Churn card: why"],
-  [16.4, "Customer page"], [18.6, "Lighty's next step"], [21.3, "Typing to Ask Lighty"],
-  [22.8, "Lighty answers"], [25.6, "The answer, close up"], [29.0, "Closing"],
+  [2.8, "The problem"], [6.5, "Lighty"], [9.6, "Regions: all of Germany"],
+  [11.0, "Click: Hessen"], [13.0, "Click: Hanau"], [15.8, "Churn risk page"],
+  [18.8, "Click: the customer's row"], [21.2, "Churn card: why"], [25.0, "Lighty's next step"],
+  [28.6, "Typing to Ask Lighty"], [33.0, "Lighty's answer"], [38.0, "Closing"],
 ];
 
 function parseArgs(argv) {
-  const a = { out: path.join(DIR, "lighty-pitch-30s.mp4") };
+  const a = { out: path.join(DIR, "lighty-pitch-40s.mp4") };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i].replace(/^--/, "");
     a[k] = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : true;
@@ -62,7 +62,7 @@ function timingReport(samples, audio, probe, opts) {
     const visible = text.filter((u) => u.vis > 0.02);
     for (const u of text) {
       if (!units.has(u.id)) units.set(u.id, { text: u.text, words: u.words, frames: [] });
-      if (u.vis >= 0.5) units.get(u.id).frames.push(t);
+      if (u.vis >= 0.5) { units.get(u.id).frames.push(t); units.get(u.id).text = u.text; }
     }
     if (!inDissolve(t)) {
       const words = visible.reduce((s, u) => s + u.words, 0);
@@ -109,12 +109,6 @@ async function main() {
   const stillsDir = opts.stills === true ? path.join(DIR, "frames") : opts.stills;
   const wav = path.join(DIR, "music.wav");
 
-  let audio = null;
-  if (!stillsDir) {
-    console.log("music: synthesising music.wav");
-    audio = JSON.parse(execFileSync("python3", [path.join(DIR, "music.py"), wav], { encoding: "utf8" }));
-  }
-
   const server = await serve(DIR);
   const q = new URLSearchParams({ render: "1" });
   for (const k of ["bg", "accent"]) if (typeof opts[k] === "string") q.set(k, opts[k]);
@@ -124,6 +118,15 @@ async function main() {
   await page.goto(`http://127.0.0.1:${server.address().port}/lighty-pitch.html?${q}`);
   const fontOk = await page.evaluate(() => window.videoReady);
   if (!fontOk) throw new Error("Plus Jakarta Sans did not load; refusing to render with a fallback font");
+
+  // music bed plus the sound effects at the moments the video names (clicks, key taps, whooshes)
+  let audio = null;
+  if (!stillsDir) {
+    const cues = path.join(DIR, "sound-cues.json");
+    fs.writeFileSync(cues, JSON.stringify(await page.evaluate(() => window.soundCues()), null, 1));
+    console.log("music: synthesising music.wav with the sound effects");
+    audio = JSON.parse(execFileSync("python3", [path.join(DIR, "music.py"), wav, cues], { encoding: "utf8" }));
+  }
 
   const keyIdx = new Map(KEY_FRAMES.map(([t, label]) => [Math.round(t * FPS), label]));
   const stills = [];
@@ -178,7 +181,7 @@ async function main() {
     main { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px 24px; }
     figure { margin: 0; } img { width: 100%; display: block; border-radius: 10px; border: 1px solid #E2EAF6; }
     figcaption { margin-top: 10px; } b { color: #002657; font-weight: 750; margin-right: 8px; }
-  </style><h1>Lighty · 30-second pitch · storyboard</h1><main>${tiles}</main>`);
+  </style><h1>Lighty · 40-second pitch · storyboard</h1><main>${tiles}</main>`);
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: path.join(DIR, "storyboard.png"), fullPage: true });
   await browser.close(); server.close();
