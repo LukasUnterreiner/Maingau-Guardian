@@ -13,20 +13,25 @@ Counted: the titles and captions this video adds. The recorded app screens are n
 | 55–60% | 1 | 0:00.47 | 0:04.20 | 3.73 s | yes |
 | of customers cancel after just one year. | 7 | 0:01.17 | 0:04.20 | 3.03 s | yes |
 | Lighty | 1 | 0:05.00 | 0:08.03 | 3.03 s | yes |
-| Year-one cliff | 2 | 0:20.40 | 0:23.43 | 3.03 s | yes |
-| Spot churn hot spots across Germany. | 6 | 0:09.43 | 0:14.57 | 5.13 s | yes |
-| See who might cancel, and why. | 6 | 0:15.53 | 0:23.17 | 7.63 s | yes |
-| Get the next best step to keep them. | 8 | 0:24.10 | 0:27.27 | 3.17 s | yes |
-| Ask Lighty how to keep each customer. | 7 | 0:28.20 | 0:34.87 | 6.67 s | yes |
-| Spot churn early. Keep customers past year one. | 8 | 0:35.70 | 0:40.00 | 4.30 s | yes |
+| Year-one cliff | 2 | 0:19.00 | 0:22.03 | 3.03 s | yes |
+| Spot churn hot spots across Germany. | 6 | 0:09.33 | 0:14.07 | 4.73 s | yes |
+| See who might cancel, and why. | 6 | 0:15.03 | 0:21.53 | 6.50 s | yes |
+| Get the next best step to keep them. | 8 | 0:22.53 | 0:25.63 | 3.10 s | yes |
+| Ask Lighty how to keep each customer. | 7 | 0:26.40 | 0:32.17 | 5.77 s | yes |
+| See it, | 2 | 0:32.87 | 0:36.53 | 3.67 s | yes |
+| Say it, | 2 | 0:33.10 | 0:36.53 | 3.43 s | yes |
+| Sort it | 2 | 0:33.37 | 0:36.53 | 3.17 s | yes |
+| Spot churn early. Keep customers past year one. | 8 | 0:37.00 | 0:40.00 | 3.00 s | yes |
 
 ## Music bed
 
-Integrated loudness -16 LUFS, true peak -4.7 dBTP. Level per section (RMS, dBFS):
+Integrated loudness -14 LUFS, true peak -3 dBTP. Level per section (RMS, dBFS):
 
 | Section | RMS |
 |---|---:|
-| 0:00–0:04.5 the problem | -20.2 |
-| 0:04.5–0:08 Lighty | -17.7 |
-| 0:08–0:35 dashboard demo | -18 |
-| 0:35–0:40 closing | -19.2 |
+| 0:00–4.5 s the problem | -22.8 |
+| 4.5–7.75 s Lighty | -14 |
+| 7.75–32.5 s dashboard demo | -14.4 |
+| 26.8–29.2 s typing (breakdown) | -24.2 |
+| 32.5–36.5 s slogan | -13.3 |
+| 36.5–40 s closing | -22.3 |

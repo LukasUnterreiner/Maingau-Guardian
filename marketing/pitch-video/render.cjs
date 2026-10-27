@@ -18,16 +18,16 @@ const DIR = __dirname;
 const FPS = 30;
 const DURATION = 40;
 const FRAMES = FPS * DURATION;
-const DISSOLVES = [8.0, 35.0];   // centres of the 0.5 s scene changes where two scenes overlap
+const DISSOLVES = [8.0, 32.5, 36.5];   // centres of the 0.5 s scene changes where two scenes overlap
 const MAX_WORDS = 8;
 const MIN_READ = 3.0;
 
 // Storyboard frames: one per beat.
 const KEY_FRAMES = [
-  [2.8, "The problem"], [6.5, "Lighty"], [9.6, "Regions: all of Germany"],
-  [11.0, "Click: Hessen"], [13.0, "Click: Hanau"], [15.8, "Churn risk page"],
-  [18.8, "Click: the customer's row"], [21.2, "Churn card: why"], [25.0, "Lighty's next step"],
-  [28.6, "Typing to Ask Lighty"], [33.0, "Lighty's answer"], [38.0, "Closing"],
+  [2.8, "The problem"], [6.3, "Lighty"], [9.4, "Regions: all of Germany"],
+  [12.7, "Hanau pops out"], [17.85, "Click: the customer's row"], [20.4, "Churn card: why"],
+  [24.6, "Lighty's next step"], [27.9, "Typing to Ask Lighty"], [31.2, "Lighty's answer"],
+  [32.9, "Slogan, hit by hit"], [35.2, "See it, Say it, Sort it"], [38.6, "Closing"],
 ];
 
 function parseArgs(argv) {

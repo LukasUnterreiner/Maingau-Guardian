@@ -9,15 +9,20 @@
 
   Every frame is a pure function of time: renderAt(t) draws second t.
   render.cjs steps through t = 0, 1/30, … 39.967 and pipes screenshots into ffmpeg; soundCues() gives it the
-  moments for the sound effects (clicks, key taps, whooshes), which music.py mixes into the music bed.
+  sound effects (clicks, key taps, whooshes) and the moments the music lines up with (drops, the slogan hits),
+  which music.py turns into the soundtrack.
   Opened over HTTP (python3 -m http.server, then /lighty-pitch.html) it is a preview player.
 
   The dashboard part shows frames of the real Lighty web app, recorded by capture.cjs into demo-frames/
-  (real pages, clicks, hover tooltips, scrolling, typing and chat answer). This file adds the window frame, the
-  camera moves, the mouse pointer (headless Chromium draws none), the highlights and the captions.
+  (real pages, clicks, hover tooltips, scrolling, typing and chat answer). This file adds the 3D window, the
+  camera moves, the mouse pointer (headless Chromium draws none), the pop-outs and the captions.
+
+  Depth and blur stay off whatever the viewer reads: the window tilts only while the camera is wide and is flat
+  for every close-up, motion blur appears only while the camera moves, and a popped-out detail stays sharp while
+  the rest of the screen softens behind it.
 
   Settings (also as query parameters ?bg=…&accent=…):
-    background  #F1F6FF  MAINGAU blue-grey-light (the web app's canvas)
+    background  #F1F6FF  MAINGAU blue-grey-light (the web app's canvas); night blue #002657 for the slogan
     accent      #004BAD  MAINGAU brand blue; spark #FFE500 (the bulb's yellow) for highlights only
     typeface    Plus Jakarta Sans (OFL), the web app's typeface
     logo        frontend/static/lighty-bulb.svg
@@ -40,6 +45,7 @@
   --grey: #B5C5DA;
   --spark: #FFE500;
   --click: #0069F1;
+  --night: #002657;
   --font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -58,9 +64,10 @@ body.render { background: var(--bg); }
   align-items: center; justify-content: center;
 }
 .w { display: inline-block; will-change: transform, opacity, filter; }
+svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---------- moving background */
-#bg { position: absolute; inset: 0; overflow: hidden; }
+/* ---------- moving background with depth: soft lights, a dot grid, out-of-focus glass panes */
+#bg { position: absolute; inset: 0; overflow: hidden; perspective: 1600px; }
 .blob { position: absolute; width: 1100px; height: 1100px; margin: -550px 0 0 -550px; border-radius: 50%; }
 #blob-a { background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 13%, transparent), transparent); }
 #blob-b { background: radial-gradient(closest-side, rgba(255, 229, 0, .17), transparent); }
@@ -69,6 +76,14 @@ body.render { background: var(--bg); }
   background-image: radial-gradient(circle, rgba(0, 38, 87, .07) 1.6px, transparent 1.8px);
   background-size: 36px 36px;
 }
+.pane {
+  position: absolute; border-radius: 40px; border: 1.5px solid rgba(255, 255, 255, .7);
+  background: linear-gradient(140deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .12));
+  box-shadow: 0 30px 60px -20px rgba(0, 38, 87, .18);
+}
+#pane-a { width: 360px; height: 240px; left: 120px; top: 640px; filter: blur(7px); }
+#pane-b { width: 260px; height: 260px; left: 1560px; top: 110px; filter: blur(12px); }
+#pane-c { width: 200px; height: 140px; left: 1460px; top: 760px; filter: blur(4px); }
 
 /* ---------- 1 the problem */
 #people { display: flex; gap: 22px; margin-bottom: 54px; }
@@ -100,7 +115,7 @@ body.render { background: var(--bg); }
 .world { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
 .window {
   position: absolute; left: 256px; top: 54px; width: 1408px; height: 832px;
-  border-radius: 20px; overflow: hidden; background: #FFFFFF; transform-origin: 50% 100%;
+  border-radius: 20px; overflow: hidden; background: #FFFFFF; transform-origin: 50% 60%;
   box-shadow: 0 2px 6px rgba(0, 38, 87, .06), 0 50px 100px -24px rgba(0, 38, 87, .32);
   outline: 1px solid rgba(0, 38, 87, .08);
 }
@@ -118,11 +133,12 @@ body.render { background: var(--bg); }
   position: absolute; left: 0; top: 40px; width: 1600px; height: 900px;
   transform: scale(0.88); transform-origin: 0 0; overflow: hidden; background: var(--bg);
 }
-.viewport img { display: block; width: 1600px; height: 900px; }
-#spot {
-  position: absolute; left: 0; top: 0; border-radius: 14px; opacity: 0;
-  box-shadow: 0 0 0 3px var(--spark), 0 0 28px 6px rgba(255, 229, 0, .55), 0 0 0 4000px rgba(0, 22, 56, .42);
+.viewport > img { display: block; width: 1600px; height: 900px; }
+#pop {
+  position: absolute; left: 0; top: 0; overflow: hidden; border-radius: 12px; opacity: 0; background: #FFFFFF;
+  box-shadow: 0 0 0 3px var(--spark), 0 0 30px 4px rgba(255, 229, 0, .45), 0 34px 60px -12px rgba(0, 22, 56, .55);
 }
+#pop img { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; }
 #callout {
   position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 8px; opacity: 0;
   transform-origin: 0 50%; white-space: nowrap;
@@ -147,7 +163,9 @@ body.render { background: var(--bg); }
 .captions { position: absolute; left: 0; right: 0; bottom: 56px; height: 100px; display: grid; place-items: center; }
 .caption {
   grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 0.28em; padding: 22px 46px; border-radius: 999px;
-  background: var(--ink); color: #FFFFFF; font-size: 48px; font-weight: 650; letter-spacing: -0.02em;
+  background: rgba(0, 38, 87, .8); color: #FFFFFF; font-size: 48px; font-weight: 650; letter-spacing: -0.02em;
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, .18);
   white-space: nowrap; box-shadow: 0 22px 44px -16px rgba(0, 38, 87, .6); opacity: 0;
 }
 .hl {
@@ -155,8 +173,29 @@ body.render { background: var(--bg); }
   background: linear-gradient(var(--spark), var(--spark)) no-repeat 0 100% / var(--u, 0%) 5px;
 }
 
-/* ---------- 4 close */
-#s4 .bulb-wrap { width: 150px; height: 200px; }
+/* ---------- 4 slogan, on night blue */
+#night {
+  position: absolute; inset: 0;
+  background: radial-gradient(1300px 760px at 50% 46%, #0E3A7E, var(--night) 72%);
+}
+#night-glow {
+  position: absolute; width: 1000px; height: 1000px; margin: -500px 0 0 -500px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 229, 0, .16), transparent);
+}
+.slogan { display: flex; align-items: flex-end; gap: 110px; }
+.chunk { display: flex; flex-direction: column; align-items: center; gap: 40px; }
+.tile {
+  width: 124px; height: 124px; border-radius: 32px; background: var(--spark); color: var(--night);
+  display: grid; place-items: center; box-shadow: 0 24px 60px -12px rgba(255, 229, 0, .5);
+}
+.tile svg { width: 64px; height: 64px; stroke-width: 2.3; }
+.say {
+  font-size: 108px; font-weight: 780; letter-spacing: -0.035em; color: #FFFFFF; white-space: nowrap;
+  transform-origin: 50% 100%;
+}
+
+/* ---------- 5 close */
+#s5 .bulb-wrap { width: 150px; height: 200px; }
 .closing {
   position: relative; margin: 66px 0 0; font-size: 74px; font-weight: 650; letter-spacing: -0.028em;
   text-align: center; line-height: 1.2; overflow: hidden; padding: 0 12px 10px;
@@ -197,10 +236,20 @@ body.render #player { display: none; }
     <rect fill="#002D67" x="629" y="1168" width="240" height="45" rx="22.5"/>
   </symbol>
   <symbol id="person" viewBox="0 0 64 80"><circle cx="32" cy="20" r="15" fill="currentColor"/><path d="M6 78c0-17 11.6-30 26-30s26 13 26 30z" fill="currentColor"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12.2 7.5L3 20.5l1.6-5A8.4 8.4 0 1 1 21 11.5z"/><path d="M8.5 11.5h.01M12.5 11.5h.01M16.5 11.5h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <!-- motion blur for camera moves: horizontal and vertical strength set per frame -->
+  <filter id="mblur" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+    <feGaussianBlur id="mblur-g" stdDeviation="0 0"/>
+  </filter>
 </svg>
 
 <div id="stage">
-  <div id="bg"><div id="dots"></div><div class="blob" id="blob-a"></div><div class="blob" id="blob-b"></div></div>
+  <div id="bg">
+    <div id="dots"></div><div class="blob" id="blob-a"></div><div class="blob" id="blob-b"></div>
+    <div class="pane" id="pane-a"></div><div class="pane" id="pane-b"></div><div class="pane" id="pane-c"></div>
+  </div>
 
   <!-- 1 · 0:00–0:04.5 · the problem -->
   <section class="scene" id="s1">
@@ -225,14 +274,14 @@ body.render #player { display: none; }
     </div>
   </section>
 
-  <!-- 3 · 0:08–0:35 · the dashboard, recorded from the real app -->
+  <!-- 3 · 0:08–0:32.5 · the dashboard, recorded from the real app -->
   <section class="scene" id="s3">
     <div class="world" id="world">
       <div class="window" id="window">
         <div class="titlebar"><i></i><i></i><i></i><span class="title">Lighty · MAINGAU Energie</span><span class="demo">Demo data</span></div>
         <div class="viewport" id="viewport">
           <img id="ui" alt="">
-          <div id="spot"></div>
+          <div id="pop"><img id="pop-img" alt=""></div>
           <div id="callout"><span class="line"></span><span class="pill t">Year-one cliff</span></div>
           <div id="ripple"></div>
           <div id="burst"></div>
@@ -248,12 +297,24 @@ body.render #player { display: none; }
     </div>
   </section>
 
-  <!-- 4 · 0:35–0:40 · closing -->
+  <!-- 4 · 0:32.5–0:36.5 · the slogan, one hit per part -->
   <section class="scene" id="s4">
+    <div id="night"></div><div id="night-glow"></div>
     <div class="center">
-      <div class="bulb-wrap" id="s4-bulb">
-        <div class="glow" id="s4-glow"></div>
-        <div class="rays" id="s4-rays"></div>
+      <div class="slogan" id="slogan">
+        <div class="chunk"><div class="tile"><svg class="i"><use href="#i-eye"/></svg></div><div class="say t">See it,</div></div>
+        <div class="chunk"><div class="tile"><svg class="i"><use href="#i-chat"/></svg></div><div class="say t">Say it,</div></div>
+        <div class="chunk"><div class="tile"><svg class="i"><use href="#i-check"/></svg></div><div class="say t">Sort it</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · 0:36.5–0:40 · closing -->
+  <section class="scene" id="s5">
+    <div class="center">
+      <div class="bulb-wrap" id="s5-bulb">
+        <div class="glow" id="s5-glow"></div>
+        <div class="rays" id="s5-rays"></div>
         <svg class="bulb"><use href="#bulb"/></svg>
       </div>
       <p class="closing t" id="closing">Spot churn early. Keep customers <mark>past year one.</mark><span id="shine"></span></p>
@@ -282,77 +343,81 @@ if (params.get("bg")) stage.style.setProperty("--bg", params.get("bg"));
 if (params.get("accent")) stage.style.setProperty("--accent", params.get("accent"));
 
 // ---------------------------------------------------------------- timing (seconds)
-const LOGO = 4.5, DEMO = 7.75, CLOSE = 35.0;
+// The music is 120 bpm with bars starting at 0:00.5, so LOGO, SLOGAN and CLOSE fall on a bar.
+const LOGO = 4.5, DEMO = 7.75, SLOGAN = 32.5, CLOSE = 36.5;
 const WIPE = { at: 4.65, dur: 0.6, feather: 160 };   // the one horizontal wipe: the name at the logo reveal
 const DROP = [4, 5, 6, 7, 8, 9];                     // 6 of 10 people leave: the 55–60 %
+const HITS = [32.75, 33.0, 33.25];                   // "See it," "Say it," "Sort it": quick hits on the eighths after the drop
 
 // Captions: [in, out]. They change one after the other, never overlapping.
-const CAPTIONS = { "cap-r": [9.0, 14.7], "cap-a": [15.1, 23.3], "cap-b": [23.6, 27.4], "cap-c": [27.7, CLOSE] };
+const CAPTIONS = { "cap-r": [8.9, 14.2], "cap-a": [14.6, 21.65], "cap-b": [22.05, 25.75], "cap-c": [25.9, 32.3] };
 
 // Recorded clips (demo-frames/manifest.json) on the timeline: [start, clip, frames per output frame].
 // A clip plays from its first frame and then holds its last one until the next clip starts.
-const TYPE_AT = 28.7, TYPE_RATE = 0.45, ENTER = 31.2, ANSWER = 31.65;
+const TYPE_AT = 26.85, TYPE_RATE = 0.5, ENTER = 29.1, ANSWER = 29.5;
 const PLAY = [
   [DEMO, "regions"],
-  [9.75, "state-hover"],           // the pointer is over Hessen: the app's tooltip
-  [10.37, "state"],                // Hessen was clicked at 10.3
-  [11.15, "city-hover"],           // over Hanau's pillar
-  [11.77, "city"],                 // Hanau was clicked at 11.7
-  [14.55, "nav-hover"],
-  [14.87, "risk"],                 // "Churn risk" in the sidebar was clicked at 14.8
-  [16.9, "risk-scroll"],
-  [17.5, "grid-scroll"],
-  [18.67, "row-selected"],         // the row was clicked at 18.6
-  [18.95, "card-scroll"],
-  [23.97, "customer"],             // "Open MG-…" was clicked at 23.9
-  [24.3, "hero-scroll"],
-  [27.5, "ask-scroll"],
-  [TYPE_AT, "typing", TYPE_RATE],  // the input was clicked at 28.6
+  [9.6, "state-hover"],            // the pointer is over Hessen: the app's tooltip
+  [10.17, "state"],                // Hessen was clicked at 10.1
+  [10.95, "city-hover"],           // over Hanau's pillar
+  [11.52, "city"],                 // Hanau was clicked at 11.45
+  [14.05, "nav-hover"],
+  [14.37, "risk"],                 // "Churn risk" in the sidebar was clicked at 14.3
+  [16.15, "risk-scroll"],
+  [16.75, "grid-scroll"],
+  [17.82, "row-selected"],         // the row was clicked at 17.75
+  [18.05, "card-scroll"],
+  [22.32, "customer"],             // "Open MG-…" was clicked at 22.25
+  [22.6, "hero-scroll"],
+  [25.7, "ask-scroll"],
+  [TYPE_AT, "typing", TYPE_RATE],  // the input was clicked at 26.75
   [ENTER, "sending", 0],           // the question is posted, no answer yet
   [ANSWER, "answer"],
 ];
-const CLICKS = [10.3, 11.7, 14.8, 18.6, 23.9, 28.6];
+const CLICKS = [10.1, 11.45, 14.3, 17.75, 22.25, 26.75];
 
 // Camera: [start, what to frame, seconds to get there]. A target is "home", or [clip, [box names], padding],
 // or [clip, {x, y, w, h}] in app px.
 const CAM = [
   [DEMO, "home", 0],
-  [8.7, ["regions", { x: 380, y: 130, w: 640, h: 660 }], 1.1],
-  [10.4, ["state", { x: 400, y: 240, w: 600, h: 520 }], 1.0],
-  [11.9, ["city", { x: 380, y: 130, w: 1140, h: 620 }], 0.9],
-  [13.8, "home", 0.6],
-  [14.95, ["risk", ["headline", "tiles"], 28], 1.0],
-  [16.7, ["risk-scroll", ["grid"], 24], 0.9],
-  [18.9, ["card-scroll", ["card"], 24], 0.8],
-  [19.7, ["card-scroll", ["chance", "why"], 40], 0.9],
-  [23.35, ["card-scroll", ["card", "open"], 24], 0.6],
-  [23.97, "home", 0.6],
-  [25.0, ["hero-scroll", ["hero-title"], 60], 0.9],
-  [27.45, ["ask-scroll", ["ask"], 30], 0.9],
-  [31.95, ["answer", ["answer-churn", "answer-price"], 30], 0.9],
+  [8.6, ["regions", { x: 380, y: 130, w: 640, h: 660 }], 1.0],
+  [10.2, ["state", { x: 400, y: 240, w: 600, h: 520 }], 0.9],
+  [11.6, ["city", { x: 380, y: 130, w: 1140, h: 620 }], 0.8],
+  [13.35, "home", 0.5],
+  [14.45, ["risk", ["headline", "tiles"], 28], 0.9],
+  [16.0, ["risk-scroll", ["grid"], 24], 0.8],
+  [18.0, ["card-scroll", ["card"], 24], 0.7],
+  [18.75, ["card-scroll", ["chance", "why"], 40], 0.8],
+  [21.8, ["card-scroll", ["card", "open"], 24], 0.5],
+  [22.32, "home", 0.5],
+  [23.25, ["hero-scroll", ["hero-title"], 60], 0.8],
+  [25.65, ["ask-scroll", ["ask"], 30], 0.8],
+  [29.75, ["answer", ["answer-churn", "answer-price"], 30], 0.8],
 ];
 
-// Highlights: a yellow ring with the rest dimmed. [in, out, clip, box name or {x, y, w, h}, padding]
-const SPOTS = [
-  [12.3, 13.7, "city", "row", 6],
-  [20.1, 23.25, "card-scroll", { x: 413, y: 597, w: 532, h: 36 }, 0],
-  [25.5, 27.35, "hero-scroll", "hero-title", 12],
-  [32.4, 34.8, "answer", ["answer-churn", "answer-price"], 10],
+// Pop-outs: the detail lifts off the screen, sharp, while the rest softens behind it.
+// [in, out, clip, box name(s) or {x, y, w, h}, padding]
+const POPS = [
+  [12.0, 13.3, "city", "row", 6],
+  [18.85, 21.85, "card-scroll", { x: 413, y: 597, w: 532, h: 36 }, 0],
+  [23.7, 25.6, "hero-scroll", "hero-title", 12],
+  [30.2, 32.2, "answer", ["answer-churn", "answer-price"], 10],
 ];
-const CALLOUT = { at: 20.3, out: 23.25, x: 952, y: 615 };   // "Year-one cliff" next to the price-guarantee line
+const CALLOUT = { at: 18.9, out: 21.85, x: 960, y: 615 };   // "Year-one cliff" next to the price-guarantee line
 
 // Mouse pointer: [time, x, y] in app px (null = hidden; "clip:box" = the centre of a recorded box).
 const POINTER = [
-  [8.95, null], [9.05, 900, 250], [9.75, "state-hover:click"], [10.6, "state-hover:click"], [11.15, "city-hover:click"],
-  [13.95, "city-hover:click"], [14.55, 90, 151], [16.8, 90, 151], [17.5, 960, 700], [18.5, "grid-scroll:click"],
-  [23.4, "grid-scroll:click"], [23.8, "card-scroll:open"], [24.25, "card-scroll:open"], [24.4, null],
-  [28.0, null], [28.1, 1470, 680], [28.5, 1200, 470], [31.0, 1200, 470], [31.15, null],
+  [8.85, null], [8.95, 900, 250], [9.6, "state-hover:click"], [10.4, "state-hover:click"], [10.95, "city-hover:click"],
+  [13.5, "city-hover:click"], [14.05, 90, 151], [16.05, 90, 151], [16.75, 960, 700], [17.65, "grid-scroll:click"],
+  [21.8, "grid-scroll:click"], [22.15, "card-scroll:open"], [22.6, "card-scroll:open"], [22.75, null],
+  [26.2, null], [26.3, 1470, 680], [26.65, 1200, 470], [28.9, 1200, 470], [29.05, null],
 ];
 
 // Window geometry on the stage: app px (1600×900) → stage px.
 const WIN = { x: 256, y: 94, k: 0.88, w: 1600, h: 900, top: 54, bottom: 886 };
 const FOCUS = { x: 960, y: 470, w: 1760, h: 820 };   // where a framed box goes (keeps clear of the captions)
 const ZMAX = 2.2;
+const TILT = { x: 4, y: -7 };                        // the window's 3D angle while the camera is wide
 
 // ---------------------------------------------------------------- easing
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -364,6 +429,7 @@ const outBack = (x, s = 1.6) => 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(
 const spring = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.exp(-6 * x) * Math.cos(10.5 * x));
 const mix = (a, b, e) => a + (b - a) * e;
 const px = (v) => `${v.toFixed(2)}px`;
+const blur = (v) => (v > 0.05 ? `blur(${v.toFixed(2)}px)` : "");
 
 // ---------------------------------------------------------------- set-up: words, people, rays
 function splitWords(el) {
@@ -389,7 +455,7 @@ document.querySelectorAll(".caption, #stat-line, #closing").forEach(splitWords);
 for (let i = 0; i < 10; i++) {
   $("people").insertAdjacentHTML("beforeend", '<div class="person"><svg><use href="#person"/></svg></div>');
 }
-for (const id of ["s2-rays", "s4-rays"]) for (let i = 0; i < 10; i++) $(id).append(document.createElement("i"));
+for (const id of ["s2-rays", "s5-rays"]) for (let i = 0; i < 10; i++) $(id).append(document.createElement("i"));
 for (let i = 0; i < 8; i++) $("burst").append(document.createElement("i"));
 
 // ---------------------------------------------------------------- recorded app
@@ -463,20 +529,22 @@ function pointerAt(t) {
 }
 
 // ---------------------------------------------------------------- pieces
-function words(el, t, start, step, { rise = 26, blur = 8 } = {}) {
+function words(el, t, start, step, { rise = 26, blur: b = 8 } = {}) {
   el.querySelectorAll(".w").forEach((w, i) => {
     const p = lin(t, start + i * step, start + i * step + 0.45);
     w.style.opacity = sine(p).toFixed(3);
     w.style.transform = `translateY(${px((1 - outCubic(p)) * rise)})`;
-    w.style.filter = p < 1 ? `blur(${((1 - p) * blur).toFixed(2)}px)` : "";
+    w.style.filter = p < 1 ? blur((1 - p) * b) : "";
   });
 }
 
-function bulbOn(prefix, t, at) {
+function bulbOn(prefix, t, at, turn = 0) {
   const p = lin(t, at, at + 0.7);
   const b = $(`${prefix}-bulb`);
   b.style.opacity = sine(lin(t, at, at + 0.2)).toFixed(3);
-  b.style.transform = `scale(${(0.3 + 0.7 * spring(p)).toFixed(4)}) rotate(${((1 - outCubic(p)) * -10).toFixed(2)}deg)`;
+  b.style.transform = `perspective(900px) rotateY(${((1 - outCubic(p)) * turn).toFixed(2)}deg) ` +
+    `scale(${(0.3 + 0.7 * spring(p)).toFixed(4)}) rotate(${((1 - outCubic(p)) * -10).toFixed(2)}deg)`;
+  b.style.filter = blur((1 - outCubic(lin(t, at, at + 0.35))) * 10);
   const g = lin(t, at + 0.1, at + 1.0);
   const glow = $(`${prefix}-glow`);
   const breathe = 1 + 0.04 * Math.sin((t - at) * 2.2);
@@ -484,16 +552,16 @@ function bulbOn(prefix, t, at) {
   glow.style.transform = `scale(${((0.25 + 1.15 * outCubic(g)) * breathe).toFixed(4)})`;
   const r = lin(t, at + 0.2, at + 0.85);
   $(`${prefix}-rays`).querySelectorAll("i").forEach((ray, i) => {
-    const a = i * 36;
     ray.style.opacity = (r > 0 && r < 1 ? Math.sin(Math.PI * r) : 0).toFixed(3);
-    ray.style.transform = `rotate(${a}deg) translateY(${px(130 + 70 * outCubic(r))}) scaleY(${(1 - 0.6 * r).toFixed(3)})`;
+    ray.style.transform = `rotate(${i * 36}deg) translateY(${px(130 + 70 * outCubic(r))}) scaleY(${(1 - 0.6 * r).toFixed(3)})`;
   });
 }
 
 function caption(el, t, [tin, tout]) {
   const p = lin(t, tin, tin + 0.6), q = lin(t, tout - 0.3, tout);
   el.style.opacity = (sine(lin(t, tin, tin + 0.25)) * (1 - sine(q))).toFixed(3);
-  el.style.transform = `translateY(${px((1 - spring(p)) * 60 - sine(q) * 16)}) scale(${(0.86 + 0.14 * spring(p)).toFixed(4)})`;
+  el.style.transform = `perspective(900px) translateY(${px((1 - spring(p)) * 60 - sine(q) * 16)}) ` +
+    `rotateX(${((1 - outCubic(p)) * 35).toFixed(2)}deg) scale(${(0.86 + 0.14 * spring(p)).toFixed(4)})`;
   words(el, t, tin + 0.1, 0.05, { rise: 30, blur: 6 });
   el.querySelectorAll(".hl").forEach((h) => h.style.setProperty("--u", `${(outCubic(lin(t, tin + 0.55, tin + 1.0)) * 100).toFixed(1)}%`));
 }
@@ -501,7 +569,7 @@ function caption(el, t, [tin, tout]) {
 // ---------------------------------------------------------------- render
 let lockup = null;     // left/right edge of the name, measured once
 let wipeEdge = null;   // current wipe edge in stage px (null when no wipe is running)
-let shown = null;
+const shown = {};      // frame currently in each <img>
 
 function measureLockup() {
   const s2 = $("s2"); const prev = s2.style.visibility;
@@ -518,39 +586,55 @@ function show(id, o) {
   s.style.visibility = o > 0 ? "visible" : "hidden";
 }
 
+async function load(id, frame) {
+  if (shown[id] === frame) return;
+  const img = $(id);
+  img.src = `demo-frames/${frame}`;
+  await img.decode().catch(() => {});
+  shown[id] = frame;
+}
+
 async function draw(t) {
   await ready;
   if (!lockup) measureLockup();
 
-  // background: two soft lights drifting, the dot grid sliding slowly
+  // background: soft lights drifting, the dot grid sliding, out-of-focus glass panes floating at three depths
   $("blob-a").style.transform = `translate(${px(560 + 260 * Math.sin(t * 0.21))}, ${px(300 + 140 * Math.cos(t * 0.17))})`;
   $("blob-b").style.transform = `translate(${px(1420 + 220 * Math.cos(t * 0.19))}, ${px(820 + 150 * Math.sin(t * 0.23))})`;
   $("dots").style.transform = `translate(${px((t * 6) % 36)}, ${px((t * 3) % 36)})`;
+  [["pane-a", 0.9, 26, 18], ["pane-b", 1.3, -22, 14], ["pane-c", 1.7, 18, -20]].forEach(([id, sp, ry, rx], i) => {
+    $(id).style.transform = `translate3d(${px(30 * Math.sin(t * 0.15 * sp + i))}, ${px(24 * Math.cos(t * 0.12 * sp + i))}, 0) ` +
+      `rotateX(${(rx + 6 * Math.sin(t * 0.2 + i)).toFixed(2)}deg) rotateY(${(ry + 8 * Math.cos(t * 0.17 + i)).toFixed(2)}deg)`;
+  });
 
   // 1 · the problem: ten people, six leave; the share counts up
   const hookOut = lin(t, 3.95, 4.4);
   show("s1", t < LOGO ? 1 - sine(hookOut) : 0);
-  $("hook").style.transform = `scale(${(1 - 0.05 * sine(hookOut)).toFixed(4)})`;
-  $("hook").style.filter = hookOut > 0 ? `blur(${(6 * hookOut).toFixed(2)}px)` : "";
+  $("hook").style.transform = `scale(${(1 + 0.06 * sine(hookOut)).toFixed(4)})`;
+  $("hook").style.filter = blur(10 * hookOut);
   $("people").querySelectorAll(".person").forEach((p, i) => {
     const a = lin(t, 0.12 + i * 0.05, 0.47 + i * 0.05);
     const k = DROP.indexOf(i), d = k < 0 ? 0 : lin(t, 1.55 + k * 0.17, 1.95 + k * 0.17);
     p.style.opacity = (sine(a) * (1 - 0.65 * d)).toFixed(3);
     p.style.transform = `translateY(${px((1 - spring(a)) * 30 + 22 * outCubic(d))}) scale(${(0.6 + 0.4 * spring(a) - 0.12 * d).toFixed(4)})`;
     p.style.color = d > 0 ? `color-mix(in srgb, var(--grey) ${(d * 100).toFixed(1)}%, var(--ink))` : "";
+    p.style.filter = blur(2.5 * d);                       // the ones who leave drift out of focus
   });
   const c = lin(t, 0.35, 1.5);
   const stat = $("stat");
   stat.textContent = t < 1.55 ? `${Math.round(55 * outCubic(c))}%` : "55–60%";
   stat.style.opacity = sine(lin(t, 0.3, 0.6)).toFixed(3);
-  stat.style.transform = `scale(${(1 + 0.07 * Math.sin(Math.PI * lin(t, 1.55, 1.9))).toFixed(4)})`;
+  stat.style.filter = blur((1 - outCubic(lin(t, 0.3, 0.75))) * 14);
+  stat.style.transform = `perspective(1200px) rotateX(${((1 - outCubic(lin(t, 0.3, 0.9))) * 30).toFixed(2)}deg) ` +
+    `scale(${(1 + 0.07 * Math.sin(Math.PI * lin(t, 1.55, 1.9))).toFixed(4)})`;
   words($("stat-line"), t, 0.75, 0.06);
 
-  // 2 · Lighty: the bulb switches on, the name wipes in
+  // 2 · Lighty: the bulb switches on, the name wipes in; out with a blur
   const logoOut = lin(t, DEMO, DEMO + 0.5);
   show("s2", t >= LOGO ? 1 - sine(logoOut) : 0);
-  $("s2").style.transform = `scale(${(1 + 0.08 * sine(logoOut)).toFixed(4)})`;
-  bulbOn("s2", t, LOGO);
+  $("s2").style.transform = `scale(${(1 + 0.1 * sine(logoOut)).toFixed(4)})`;
+  $("s2").style.filter = blur(14 * logoOut);
+  bulbOn("s2", t, LOGO, 50);
   const wp = lin(t, WIPE.at, WIPE.at + WIPE.dur), name = $("s2-name");
   if (t >= WIPE.at && wp < 1) {
     const F = WIPE.feather;
@@ -565,41 +649,52 @@ async function draw(t) {
   name.style.transform = `translateX(${px((1 - outCubic(wp)) * 30)})`;
 
   // 3 · the dashboard
-  const demoOut = lin(t, CLOSE - 0.25, CLOSE + 0.25);
-  show("s3", t >= DEMO ? 1 - sine(demoOut) : 0);
-  if (t >= DEMO - 0.01 && t < CLOSE + 0.3) {
-    $("s3").style.transform = `scale(${(1 - 0.04 * sine(demoOut)).toFixed(4)})`;
-    const img = $("ui"), frame = frameAt(t);
-    if (frame !== shown) {
-      img.src = `demo-frames/${frame}`;
-      await img.decode().catch(() => {});
-      shown = frame;
-    }
-    // the window flies in, tilted back, and settles
-    const e = lin(t, DEMO, DEMO + 1.0);
-    $("window").style.opacity = sine(lin(t, DEMO, DEMO + 0.35)).toFixed(3);
-    $("window").style.transform = e < 1
-      ? `perspective(1800px) translateY(${px(180 * (1 - outCubic(e)))}) rotateX(${(26 * (1 - outBack(e, 1.2))).toFixed(3)}deg) scale(${(0.86 + 0.14 * outCubic(e)).toFixed(4)})`
-      : "";
+  const demoOut = lin(t, SLOGAN - 0.25, SLOGAN + 0.25);
+  show("s3", t >= DEMO && t < SLOGAN + 0.25 ? 1 - sine(demoOut) : 0);
+  if (t >= DEMO - 0.01 && t < SLOGAN + 0.3) {
+    // out: the whole dashboard rushes forward and blurs away
+    $("s3").style.transform = `scale(${(1 + 0.12 * sine(demoOut)).toFixed(4)})`;
+    $("s3").style.filter = blur(16 * demoOut);
+    const frame = frameAt(t);
+    await load("ui", frame);
+    const cam = cameraAt(t), prev = cameraAt(t - 1 / FPS);
 
-    const cam = cameraAt(t);
+    // the window swings in from the side in 3D and settles; while the camera is wide it keeps a slight angle,
+    // in every close-up it is flat
+    const e = lin(t, DEMO, DEMO + 1.1), f = clamp((1.3 - cam.z) / 0.3);
+    const enter = 1 - outBack(e, 1.1);
+    $("window").style.opacity = sine(lin(t, DEMO, DEMO + 0.35)).toFixed(3);
+    $("window").style.transform = `perspective(2400px) translateY(${px(170 * (1 - outCubic(e)))}) ` +
+      `rotateX(${(TILT.x * f + 22 * enter).toFixed(3)}deg) rotateY(${(TILT.y * f - 30 * enter).toFixed(3)}deg) ` +
+      `scale(${(0.86 + 0.14 * outCubic(e)).toFixed(4)})`;
+
+    // camera, with motion blur only while it moves
     $("world").style.transform =
       `translate(${FOCUS.x}px, ${FOCUS.y}px) scale(${cam.z.toFixed(5)}) translate(${(-cam.cx).toFixed(3)}px, ${(-cam.cy).toFixed(3)}px)`;
+    const zoom = Math.abs(Math.log(cam.z / prev.z)) * 260;
+    const bx = Math.min(5, Math.abs(cam.cx - prev.cx) * 0.3 + zoom), by = Math.min(5, Math.abs(cam.cy - prev.cy) * 0.3 + zoom);
+    if (bx + by > 0.4 && t > DEMO + 1.1) {
+      $("mblur-g").setAttribute("stdDeviation", `${(bx / cam.z).toFixed(2)} ${(by / cam.z).toFixed(2)}`);
+      $("world").style.filter = "url(#mblur)";
+    } else $("world").style.filter = "";
 
-    // highlight ring with the rest dimmed
-    const spot = SPOTS.find(([a, b]) => t >= a && t < b + 0.35), el = $("spot");
-    if (spot) {
-      const [a, b, clip, ref, pad] = spot, bx = boxOf(clip, ref, pad);
-      const p = lin(t, a, a + 0.45), q = lin(t, b, b + 0.35);
-      const grow = 1 + 0.12 * (1 - outBack(p, 1.4));
-      el.style.opacity = (sine(p) * (1 - sine(q))).toFixed(3);
-      el.style.left = px(bx.x); el.style.top = px(bx.y); el.style.width = px(bx.w); el.style.height = px(bx.h);
-      el.style.transform = `scale(${grow.toFixed(4)})`;
-    } else el.style.opacity = 0;
+    // pop-out: the detail lifts off, sharp and a little bigger; the screen behind it softens and dims
+    const pop = POPS.find(([a, b]) => t >= a && t < b + 0.35), el = $("pop");
+    if (pop) {
+      const [a, b, clip, ref, pad] = pop, box = boxOf(clip, ref, pad);
+      const p = lin(t, a, a + 0.5), q = lin(t, b, b + 0.35), lift = outBack(p, 1.3) * (1 - sine(q));
+      await load("pop-img", frame);
+      el.style.opacity = (sine(lin(t, a, a + 0.15)) * (1 - sine(q))).toFixed(3);
+      el.style.left = px(box.x); el.style.top = px(box.y); el.style.width = px(box.w); el.style.height = px(box.h);
+      $("pop-img").style.transform = `translate(${px(-box.x)}, ${px(-box.y)})`;
+      el.style.transform = `perspective(1400px) translateY(${px(-6 * lift)}) rotateX(${((1 - outCubic(p)) * 18).toFixed(2)}deg) scale(${(1 + 0.07 * lift).toFixed(4)})`;
+      const soft = sine(p) * (1 - sine(q));
+      $("ui").style.filter = soft > 0.01 ? `blur(${(3.2 * soft).toFixed(2)}px) brightness(${(1 - 0.22 * soft).toFixed(3)})` : "";
+    } else { el.style.opacity = 0; $("ui").style.filter = ""; }
 
     const co = $("callout"), cp = lin(t, CALLOUT.at, CALLOUT.at + 0.6), cq = lin(t, CALLOUT.out, CALLOUT.out + 0.3);
     co.style.opacity = (sine(lin(t, CALLOUT.at, CALLOUT.at + 0.15)) * (1 - sine(cq))).toFixed(3);
-    co.style.transform = `translate(${px(CALLOUT.x)}, ${px(CALLOUT.y - 18)}) scale(${(0.4 + 0.6 * spring(cp)).toFixed(4)}) rotate(${((1 - outCubic(cp)) * -8).toFixed(2)}deg)`;
+    co.style.transform = `translate(${px(CALLOUT.x)}, ${px(CALLOUT.y - 18)}) perspective(600px) rotateY(${((1 - outCubic(cp)) * -50).toFixed(2)}deg) scale(${(0.4 + 0.6 * spring(cp)).toFixed(4)})`;
 
     // pointer, press, click ring and spark burst
     const p = pointerAt(t), cur = $("cursor");
@@ -624,13 +719,31 @@ async function draw(t) {
     for (const [id, span] of Object.entries(CAPTIONS)) caption($(id), t, span);
   }
 
-  // 4 · closing: the bulb switches on again, the sentence comes in word by word, a light passes over it
-  show("s4", t >= CLOSE - 0.25 ? sine(lin(t, CLOSE - 0.25, CLOSE + 0.25)) : 0);
+  // 4 · slogan on night blue: each part flips up out of depth on its beat
+  const sIn = lin(t, SLOGAN - 0.25, SLOGAN + 0.25), sOut = lin(t, CLOSE - 0.25, CLOSE + 0.25);
+  show("s4", t >= SLOGAN - 0.25 && t < CLOSE + 0.25 ? sine(sIn) * (1 - sine(sOut)) : 0);
+  if (t >= SLOGAN - 0.25 && t < CLOSE + 0.25) {
+    $("night-glow").style.transform = `translate(${px(960 + 180 * Math.sin(t * 0.9))}, ${px(500 + 60 * Math.cos(t * 0.7))})`;
+    $("slogan").style.transform = `scale(${(1 + 0.08 * sine(sOut) + 0.015 * lin(t, HITS[2], CLOSE)).toFixed(4)})`;
+    $("slogan").style.filter = blur(14 * sOut);
+    document.querySelectorAll("#slogan .chunk").forEach((ch, k) => {
+      const at = HITS[k], p = lin(t, at - 0.08, at + 0.5), q = lin(t, at, at + 0.45);
+      const tile = ch.querySelector(".tile"), say = ch.querySelector(".say");
+      tile.style.opacity = sine(lin(t, at - 0.08, at + 0.1)).toFixed(3);
+      tile.style.transform = `perspective(900px) rotateY(${((1 - outBack(p, 1.4)) * -80).toFixed(2)}deg) scale(${(0.5 + 0.5 * spring(p)).toFixed(4)})`;
+      say.style.opacity = sine(lin(t, at, at + 0.2)).toFixed(3);
+      say.style.transform = `perspective(1100px) translateY(${px(46 * (1 - outCubic(q)))}) rotateX(${((1 - outCubic(q)) * -75).toFixed(2)}deg)`;
+      say.style.filter = blur((1 - outCubic(q)) * 18);
+    });
+  }
+
+  // 5 · closing: the bulb switches on again, the sentence comes in word by word, a light passes over it
+  show("s5", t >= CLOSE - 0.25 ? sine(lin(t, CLOSE - 0.25, CLOSE + 0.25)) : 0);
   if (t >= CLOSE - 0.25) {
-    bulbOn("s4", t, CLOSE);
-    words($("closing"), t, CLOSE + 0.25, 0.07, { rise: 34, blur: 8 });
-    $("closing").querySelector(".mark").style.setProperty("--u", `${(outCubic(lin(t, CLOSE + 0.9, CLOSE + 1.4)) * 100).toFixed(1)}%`);
-    const s = lin(t, CLOSE + 1.7, CLOSE + 2.5), shine = $("shine");
+    bulbOn("s5", t, CLOSE, 40);
+    words($("closing"), t, CLOSE + 0.15, 0.04, { rise: 34, blur: 10 });
+    $("closing").querySelector(".mark").style.setProperty("--u", `${(outCubic(lin(t, CLOSE + 0.7, CLOSE + 1.2)) * 100).toFixed(1)}%`);
+    const s = lin(t, CLOSE + 1.5, CLOSE + 2.3), shine = $("shine");
     shine.style.opacity = s > 0 && s < 1 ? Math.sin(Math.PI * s).toFixed(3) : 0;
     shine.style.transform = `translateX(${px(-200 + s * 1500)}) skewX(-18deg)`;
   }
@@ -665,22 +778,26 @@ function measureText() {
 let t0 = 0;
 async function renderFrame(t) { t0 = t; await draw(t); }
 
-// Sound effects for music.py: [{t, kind}] in seconds.
+// Sound for music.py: the effects [{t, kind}], and the moments the music lines up with.
 function soundCues() {
   const cues = [];
   for (let i = 0; i < 10; i++) cues.push({ t: 0.12 + i * 0.05, kind: "tick" });
   DROP.forEach((_, k) => cues.push({ t: 1.6 + k * 0.17, kind: "drop" }));
   cues.push({ t: 1.55, kind: "pop" });
-  cues.push({ t: LOGO - 0.05, kind: "whoosh" }, { t: LOGO + 0.12, kind: "shimmer" });
+  cues.push({ t: LOGO + 0.12, kind: "shimmer" });
   cues.push({ t: DEMO, kind: "whoosh" });
   CLICKS.forEach((ck) => cues.push({ t: ck, kind: "click" }));
-  [...manifest.question].forEach((ch, i) =>
-    cues.push({ t: TYPE_AT + (i + 1) / (FPS * TYPE_RATE), kind: ch === " " ? "space" : "key" }));
+  const keys = [...manifest.question].map((ch, i) => ({ t: TYPE_AT + (i + 1) / (FPS * TYPE_RATE), kind: ch === " " ? "space" : "key" }));
+  cues.push(...keys);
   cues.push({ t: ENTER, kind: "enter" }, { t: ENTER + 0.03, kind: "send" }, { t: ANSWER, kind: "chime" });
   cues.push({ t: CALLOUT.at, kind: "pop" });
-  SPOTS.forEach(([a]) => cues.push({ t: a, kind: "swish" }));
-  cues.push({ t: CLOSE - 0.25, kind: "whoosh" }, { t: CLOSE + 0.1, kind: "shimmer" });
-  return { duration: DURATION, cues: cues.sort((a, b) => a.t - b.t) };
+  POPS.forEach(([a]) => cues.push({ t: a, kind: "swish" }));
+  cues.push({ t: SLOGAN - 0.3, kind: "whoosh" }, { t: CLOSE - 0.25, kind: "whoosh" }, { t: CLOSE + 0.1, kind: "shimmer" });
+  return {
+    duration: DURATION, cues: cues.sort((a, b) => a.t - b.t),
+    marks: { logo: LOGO, demo: DEMO, slogan: SLOGAN, hits: HITS, close: CLOSE,
+             typing: [keys[0].t - 0.1, ENTER + 0.1] },
+  };
 }
 
 window.renderAt = renderFrame;
