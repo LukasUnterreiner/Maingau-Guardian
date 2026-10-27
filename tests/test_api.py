@@ -24,6 +24,20 @@ def test_health(client):
     assert body["acceptance_model"]["caveat"].startswith("Observational")
 
 
+
+def test_recommendation_reason_in_german(client):
+    """language=de changes only the reason text; the decision, its codes and the decision log stay the same."""
+    en = client.get("/api/customers/MG-100004/recommendations").json()
+    de = client.get("/api/customers/MG-100004/recommendations", params={"language": "de"}).json()
+    assert en["reason"].startswith("Resolve the service issue first")
+    assert de["reason"].startswith("Zuerst das Service-Anliegen lösen (Service-Only / No offer über Service-Anruf).")
+    assert "von 38,0 % auf 18,0 %" in de["reason"] and "+66,50 EUR" in de["reason"]
+    assert de["reason"].endswith("Marketing-Sperren aktiv: CONTACT_FREQUENCY_LIMIT, DUNNING_BLOCKS_MARKETING, "
+                                 "OPEN_COMPLAINT_BLOCKS_MARKETING, PROFILING_CONSENT_NOT_GIVEN.")
+    assert {k: v for k, v in de.items() if k != "reason"} == {k: v for k, v in en.items() if k != "reason"}
+    assert client.get("/api/customers/MG-100004/recommendations").json()["reason"] == en["reason"]
+    assert client.get("/api/customers/MG-100004/recommendations", params={"language": "fr"}).status_code == 422
+
 def test_openapi_docs_available(client):
     assert client.get("/docs").status_code == 200
     assert "/api/customers/{customer_id}/simulate" in client.get("/openapi.json").json()["paths"]

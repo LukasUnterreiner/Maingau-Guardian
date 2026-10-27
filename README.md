@@ -100,8 +100,12 @@ live data from the backend:
   with € and % formats, header row frozen, filters on).
 * **Customers**: Lighty's decision for one customer, the options it compared (blocked ones greyed out with their
   rule codes) and **Ask Lighty**, the employee copilot chat with suggested questions, warnings, fact chips,
-  confidence and the German wording box (copy only, never send). The app asks Lighty for English answers
-  (`LANGUAGE` in `frontend/lighty_api.py`), like the rest of the app; the wording for the customer stays German.
+  confidence and the German wording box (copy only, never send). Lighty answers in the app language; the wording
+  for the customer is always German.
+* **English / Deutsch**: the switch in the sidebar (and on the sign-in card) changes the whole app, including
+  Lighty's chat answers, the decision reason, number and date formats and the Excel export. The choice is kept in
+  the page address (`?lang=Deutsch`), so a reload keeps it. English has no Sie/Du, so the English app shows the form
+  of address as Formal/Informal. Texts live next to their use as `tr("English", "Deutsch")` (`frontend/i18n.py`).
 
 Employees sign in with a token from `EMPLOYEE_TOKENS`. The app calls the backend from the server side, so CORS does
 not apply. Everything the API returns is HTML-escaped before it is shown.
@@ -131,10 +135,11 @@ updates), queue filters, row selection, churn-risk page and card, customer page,
 pytest -q
 ```
 
-105 tests:
+106 tests:
 
-* Engine (44): the 12 mandatory scenarios of the brief, the MG‑100004 service case, a dataset-wide check that the
-  CLV formula and all churn drivers reproduce `customer_value`, API contract/error tests and an unreachable-AI test.
+* Engine (45): the 12 mandatory scenarios of the brief, the MG‑100004 service case, a dataset-wide check that the
+  CLV formula and all churn drivers reproduce `customer_value`, API contract/error tests, the German decision reason
+  and an unreachable-AI test.
 * Copilot (46, `tests/test_copilot.py`): context building, personalised answers, unresolved issues, use of the
   engine decision, consent restrictions, cross-sell and retention, no fabricated values, missing information,
   invalid ids, unavailable or misbehaving LLM, conversation isolation, authorisation, no cross-customer leakage,
@@ -146,7 +151,7 @@ pytest -q
 * LLM client (9, `tests/test_llm_client.py`): request format of the hessian.AI gateway, removal of reasoning
   blocks, failures without leaking the key, pause after network errors.
 
-Last run: **105 passed** (Python 3.13 local).
+Last run: **106 passed** (Python 3.13 local).
 
 ## Docker
 
@@ -230,6 +235,7 @@ app/
 frontend/
   app.py                         Streamlit entry: theme, sign-in, navigation
   lighty_api.py                  Client for the backend API
+  i18n.py                        English / Deutsch switch and tr("English", "Deutsch")
   ui.py                          Design pieces filled with API data, cached data access, approve/reject
   views/                         Cockpit, churn risk, regions map, approval queue, customer page with Ask Lighty
   static/                        Logo, map outlines (geo/, Natural Earth) and Plotly's base map file (topojson/)

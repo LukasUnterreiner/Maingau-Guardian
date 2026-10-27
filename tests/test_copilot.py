@@ -582,6 +582,9 @@ def test_answers_name_rules_in_words_not_codes(copilot_client):
     assert not any(re.search(r"\b[A-Z]+(?:_[A-Z]+)*_(?:MARKETING|LIMIT|GAP|GIVEN|WITHDRAWN|MISSING|AVAILABLE)\b", x)
                    for x in texts)
     assert "offene Beschwerde" in b["response"]
-    assert "open complaint" in next(w["message"] for w in b["warnings"] if w["code"] == "sales_restricted")
+    assert next(w["message"] for w in b["warnings"] if w["code"] == "sales_restricted").startswith(
+        "Offener Servicefall: keine Verkaufsangebote (offene Beschwerde")
+    en = chat(copilot_client, "MG-100004", "What should I avoid in the call?", lang="en").json()
+    assert "open complaint" in next(w["message"] for w in en["warnings"] if w["code"] == "sales_restricted")
     assert {"OPEN_COMPLAINT_BLOCKS_MARKETING", "DUNNING_BLOCKS_MARKETING"} <= set(
         b["recommended_action"]["restriction_codes"])

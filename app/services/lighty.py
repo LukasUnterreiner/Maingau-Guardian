@@ -237,13 +237,15 @@ class Lighty:
         }
         return resp
 
-    def recommend(self, customer_id: str, as_of: str | None = None) -> dict[str, Any]:
+    def recommend(self, customer_id: str, as_of: str | None = None, language: str = "en") -> dict[str, Any]:
         self._require(customer_id)
         d = self.engine.decide(customer_id, self.as_of(as_of), self.settings)
         record = self._record(d)
-        status = self.log.upsert(record)
+        status = self.log.upsert(record)   # the decision log keeps the English reason
         record["approval_status"] = status
         record.pop("inputs")
+        if language == "de":
+            record["reason"] = self.engine.explain(d, "de")
         return record
 
     def portfolio(self) -> list[Decision]:

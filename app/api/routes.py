@@ -69,8 +69,9 @@ def get_customer(customer_id: str, as_of: str | None = None, g: Lighty = Depends
 
 @router.get("/customers/{customer_id}/recommendations", response_model=RecommendationResponse, responses=ERRORS,
             tags=["lighty"], dependencies=GUARD)
-def get_recommendation(customer_id: str, as_of: str | None = None, g: Lighty = Depends(lighty)):
-    return g.recommend(customer_id, as_of)
+def get_recommendation(customer_id: str, as_of: str | None = None, language: Literal["en", "de"] = "en",
+                       g: Lighty = Depends(lighty)):
+    return g.recommend(customer_id, as_of, language)
 
 
 @router.post("/customers/{customer_id}/simulate", response_model=SimulationResponse, responses=ERRORS,

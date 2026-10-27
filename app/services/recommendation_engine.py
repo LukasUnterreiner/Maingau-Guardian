@@ -176,56 +176,101 @@ class RecommendationEngine:
         return "DEC-" + hashlib.sha256(blob.encode()).hexdigest()[:16]
 
     # ------------------------------------------------------------ reasoning
-    def explain(self, d: Decision) -> str:
+    def explain(self, d: Decision, lang: str = "en") -> str:
+        """The decision in plain words: English (stored in the decision log) or German (lang="de") for the web app."""
+        de = lang == "de"
+
+        def say(en: str, de_text: str) -> str:
+            return de_text if de else en
+
+        def eur(value: float, fmt: str = "+.2f") -> str:   # English 1.50, German 1,50
+            text = format(value, fmt)
+            return (text.replace(".", ",") if de else text) + " EUR"
+
+        def share(value: float, fmt: str = ".1%") -> str:  # English 12.3%, German 12,3 %
+            text = format(value, fmt)
+            return text.replace(".", ",").replace("%", " %") if de else text
+
+        def channel(code: str) -> str:
+            return channel_name(code, lang)
+
+        def product(product_id: str) -> str:
+            return self.products[product_id]["product_name"]
+
         s = d.state
         parts: list[str] = []
         if d.recommended is None:
             if d.ranked:
                 best = d.ranked[0]
-                parts.append(f"No contact: the best permitted action ({self.products[best.product_id]['product_name']} "
-                             f"via {channel_name(best.channel)}) has an "
-                             f"expected dCLV of {best.dclv:+.2f} EUR, which does not beat doing nothing (0.00 EUR).")
+                parts.append(say(
+                    f"No contact: the best permitted action ({product(best.product_id)} via {channel(best.channel)}) "
+                    f"has an expected dCLV of {eur(best.dclv)}, which does not beat doing nothing (0.00 EUR).",
+                    f"Kein Kontakt: Die beste zulässige Aktion ({product(best.product_id)} über {channel(best.channel)}) "
+                    f"hat einen erwarteten dCLV von {eur(best.dclv)} und ist damit nicht besser als nichts zu tun "
+                    "(0,00 EUR)."))
             else:
-                parts.append("No contact: no action is permitted for this customer right now.")
+                parts.append(say("No contact: no action is permitted for this customer right now.",
+                                 "Kein Kontakt: Für diesen Kunden ist gerade keine Aktion zulässig."))
         else:
             r = d.recommended
             v = r.valuation
-            name = self.products[r.product_id]["product_name"]
+            name = product(r.product_id)
             if r.valuation.action_type == "service":
-                drivers = [dr.label for dr in s.drivers if dr.code in SERVICE_DRIVERS]
-                parts.append(f"Resolve the service issue first ({name} via {channel_name(r.channel)}).")
+                drivers = [say(dr.label, channel_name(dr.code, "de")) for dr in s.drivers if dr.code in SERVICE_DRIVERS]
+                parts.append(say(f"Resolve the service issue first ({name} via {channel(r.channel)}).",
+                                 f"Zuerst das Service-Anliegen lösen ({name} über {channel(r.channel)})."))
                 if drivers:
-                    parts.append(f"Resolving removes the service churn drivers ({', '.join(drivers)}), lowering churn "
-                                 f"from {v.churn_now:.1%} to {v.churn_after_accept:.1%} if successful "
-                                 f"(estimated success probability {r.p_used:.0%}).")
+                    parts.append(say(
+                        f"Resolving removes the service churn drivers ({', '.join(drivers)}), lowering churn "
+                        f"from {share(v.churn_now)} to {share(v.churn_after_accept)} if successful "
+                        f"(estimated success probability {share(r.p_used, '.0%')}).",
+                        f"Die Lösung beseitigt die Kündigungstreiber aus dem Service ({', '.join(drivers)}) und senkt "
+                        f"das Kündigungsrisiko bei Erfolg von {share(v.churn_now)} auf {share(v.churn_after_accept)} "
+                        f"(geschätzte Erfolgschance {share(r.p_used, '.0%')})."))
                 if d.required_service_workflow:
-                    parts.append("The open complaint is a required service workflow, so it takes precedence even "
-                                 f"though the expected dCLV is {r.dclv:+.2f} EUR.")
+                    parts.append(say(
+                        "The open complaint is a required service workflow, so it takes precedence even "
+                        f"though the expected dCLV is {eur(r.dclv)}.",
+                        "Die offene Beschwerde ist ein Pflicht-Serviceprozess und hat deshalb Vorrang, obwohl der "
+                        f"erwartete dCLV {eur(r.dclv)} beträgt."))
                 else:
-                    parts.append(f"Expected dCLV {r.dclv:+.2f} EUR versus no contact, after the "
-                                 f"{v.contact_cost_eur:.2f} EUR contact cost and the resolution cost.")
+                    parts.append(say(
+                        f"Expected dCLV {eur(r.dclv)} versus no contact, after the "
+                        f"{eur(v.contact_cost_eur, '.2f')} contact cost and the resolution cost.",
+                        f"Erwarteter dCLV {eur(r.dclv)} gegenüber keinem Kontakt, nach "
+                        f"{eur(v.contact_cost_eur, '.2f')} Kontaktkosten und den Kosten der Lösung."))
             else:
                 if r.eligibility.process == "customer_inquiry_reply":
-                    parts.append("The customer asked for a tariff offer (open tariff inquiry), so the reply is "
-                                 "handled in the service process, not as unsolicited marketing.")
-                parts.append(f"Offer {name} via {channel_name(r.channel)}: expected dCLV {r.dclv:+.2f} EUR versus no contact "
-                             f"(estimated acceptance {r.p_used:.1%}).")
+                    parts.append(say(
+                        "The customer asked for a tariff offer (open tariff inquiry), so the reply is "
+                        "handled in the service process, not as unsolicited marketing.",
+                        "Der Kunde hat nach einem Tarifangebot gefragt (offene Tarifanfrage), deshalb läuft die "
+                        "Antwort über den Serviceprozess und nicht als unaufgeforderte Werbung."))
+                parts.append(say(
+                    f"Offer {name} via {channel(r.channel)}: expected dCLV {eur(r.dclv)} versus no contact "
+                    f"(estimated acceptance {share(r.p_used)}).",
+                    f"{name} über {channel(r.channel)} anbieten: erwarteter dCLV {eur(r.dclv)} gegenüber keinem "
+                    f"Kontakt (geschätzte Annahmechance {share(r.p_used)})."))
                 if v.added_annual_margin_eur:
-                    parts.append(f"Adds {v.added_annual_margin_eur:.0f} EUR annual margin if accepted.")
+                    parts.append(say(f"Adds {eur(v.added_annual_margin_eur, '.0f')} annual margin if accepted.",
+                                     f"Bringt {eur(v.added_annual_margin_eur, '.0f')} Jahresmarge, wenn angenommen."))
                 if v.one_off_margin_eur:
-                    parts.append(f"One-off margin of {v.one_off_margin_eur:.0f} EUR if bought.")
+                    parts.append(say(f"One-off margin of {eur(v.one_off_margin_eur, '.0f')} if bought.",
+                                     f"Einmalige Marge von {eur(v.one_off_margin_eur, '.0f')} beim Kauf."))
                 if v.removed_drivers:
-                    parts.append("Removes churn driver(s): "
-                                 + ", ".join(DRIVER_DEFS[c][1] if c in DRIVER_DEFS else c for c in v.removed_drivers) + ".")
+                    parts.append(say("Removes churn driver(s): ", "Beseitigt Kündigungstreiber: ") + ", ".join(
+                        channel_name(c, "de") if de else DRIVER_DEFS[c][1] if c in DRIVER_DEFS else c
+                        for c in v.removed_drivers) + ".")
             if len(d.ranked) > 1:
                 alt = next((c for c in d.ranked if c.product_id != r.product_id), None)
                 if alt:
-                    parts.append(f"Next best permitted alternative: {self.products[alt.product_id]['product_name']} "
-                                 f"({alt.dclv:+.2f} EUR).")
+                    parts.append(say("Next best permitted alternative: ", "Nächstbeste zulässige Alternative: ")
+                                 + f"{product(alt.product_id)} ({eur(alt.dclv)}).")
         sales_blocks = sorted({code for c in d.blocked for code in c.eligibility.exclusion_codes
                                if code.endswith("BLOCKS_MARKETING") or code.startswith(("PROFILING", "CONTACT_"))})
         if sales_blocks:
-            parts.append("Marketing restrictions in force: " + ", ".join(sales_blocks) + ".")
+            parts.append(say("Marketing restrictions in force: ", "Marketing-Sperren aktiv: ")
+                         + ", ".join(sales_blocks) + ".")
         return " ".join(parts)
 
     # ----------------------------------------------------------- baselines
