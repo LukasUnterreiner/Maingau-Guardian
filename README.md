@@ -91,8 +91,9 @@ live data from the backend:
   (`clv_service_impact_eur` from the data). Each customer page starts with the same churn card, including what
   Lighty's recommended action does to the risk.
 * **Regions**: a map of Germany (16 state outlines from Natural Earth, served by the app itself, no map tiles and no
-  request to outside servers). States are coloured by a rate, cities get a bubble sized by an amount; four views
-  (Churn, Service, Opportunity, Workload). Click a state to zoom in, click a city to narrow the customer cards to it;
+  request to outside servers), on the night blue of the sidebar. States are coloured by a rate (a lighter blue is a
+  higher rate), each city gets a spark-yellow pillar as tall as an amount; four views (Churn, Service, Opportunity,
+  Workload). Under the map: the colour range (High / Medium / Low) and the highest and lowest state or city. Click a state to zoom in, click a city to narrow the customer cards to it;
   the selection is in the page address (`?region=DE-HE&city=Darmstadt`). Data from `GET /api/marketing/regions`.
   Reporting only: the region is never used for a recommendation.
 * **Approval queue**: all decisions by status (pending, approved, rejected) with filters; select a row to see the
