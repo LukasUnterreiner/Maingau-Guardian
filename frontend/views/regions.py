@@ -36,8 +36,8 @@ CUSTOMERS = tr("customers", "Kunden")
 CROWDED = {"Offenbach", "Obertshausen"}  # 5 to 10 km from Frankfurt and Hanau: name on hover only
 LABEL_AT = {"Frankfurt": "top left", "Hanau": "top right", "Wiesbaden": "middle left", "Mainz": "bottom left"}
 # the map sits on the night blue of the sidebar; on it a higher rate is a lighter blue, and a city is a spark-yellow
-# pillar as tall as its amount
-LAND, LAND_LINE, EDGE, LABEL = "#0A3270", "#1D4886", "#002657", "#DCE6F5"
+# pillar as tall as its amount. A state without customers is a neutral grey with a light edge, clearly not a rate.
+LAND, LAND_LINE, EDGE, LABEL = "#4A5A73", "#8FA4C2", "#002657", "#DCE6F5"
 SCALE = [[0, "#1F4F9A"], [0.5, "#0069F1"], [1, "#9CCBFF"]]
 PILLAR = {"left": (255, 229, 0), "right": (224, 196, 0), "top": (255, 243, 153)}   # spark yellow, lit from the left
 GHOST = {"left": (181, 197, 218), "right": (143, 164, 194), "top": (220, 230, 245)}  # a pillar out of focus
@@ -147,7 +147,7 @@ def ink_on(color: str) -> str:
 
 
 def region_map() -> go.Figure:
-    coloured = [k for k in names if k in states and region in (None, k)]  # zoomed in: neighbours stay dark land
+    coloured = [k for k in names if k in states and region in (None, k)]  # zoomed in: neighbours are outlines only
     land = [k for k in names if k not in coloured]
     x0, x1, y0, y1 = bounds(geo, region)
     pad_x, pad_y = (max((x1 - x0) * 0.18, 0.35), max((y1 - y0) * 0.12, 0.25)) if region else (0.25, 0.2)
@@ -264,7 +264,11 @@ def map_key() -> str:
         f'<span><span class="lt-mapkey__pillar"></span>{tr("Pillar", "Säule")}: {ui.esc(amount_label)} '
         f'{tr("per city", "pro Stadt")}</span>'
         f'<span><span class="lt-mapkey__dot"></span>'
-        f'{tr("City · click it to see its customers", "Stadt · anklicken, um ihre Kunden zu sehen")}</span></div></div>')
+        f'{tr("City · click it to see its customers", "Stadt · anklicken, um ihre Kunden zu sehen")}</span>'
+        + ('' if region or len(states) == len(names) else
+           f'<span><span class="lt-mapkey__none"></span>{tr("No customers in the data", "Keine Kunden in den Daten")}'
+           '</span>')
+        + '</div></div>')
 
 
 left, right = st.columns([1.35, 1], gap="medium")

@@ -172,6 +172,7 @@
 .lt-mapkey__pillar { width: 12px; height: 18px; border-radius: 3px 3px 1px 1px;
                      background: linear-gradient(90deg, var(--lt-spark) 50%, #E0C400 50%); }
 .lt-mapkey__dot { width: 9px; height: 9px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 0 0 2px var(--lt-primary); }
+.lt-mapkey__none { width: 14px; height: 12px; border-radius: 3px; background: #4A5A73; box-shadow: inset 0 0 0 1px #8FA4C2; }
 
 /* regions page: ranked list next to the map; name, bar and value share their columns across all rows (subgrid) */
 .lt-reglist { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; column-gap: 12px; }
