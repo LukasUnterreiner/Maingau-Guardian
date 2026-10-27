@@ -5,7 +5,7 @@ import streamlit as st
 
 import theme
 import ui
-from i18n import lang, tr
+from i18n import lang, switch_page, tr
 
 ov = ui.load(ui.overview)
 pending = ov.get("pending_approvals", 0)
@@ -68,25 +68,25 @@ main, side = st.columns([2.7, 1], gap="medium")
 with main:
     if ui.section(tr("Likely to cancel", "Kündigungsgefährdet"), len(at_risk), "var(--lt-resolve)", "risk",
                   tr("View all", "Alle ansehen")):
-        st.switch_page("views/risk.py")
+        switch_page("views/risk.py")
     risky = sorted(at_risk, key=lambda c: -(c.get("current_clv_eur") or 0))[:4]
-    cols = st.columns(2, gap="medium")
-    for i, c in enumerate(risky):
-        with cols[i % 2]:
-            ui.customer_card(c, ui.load(ui.recommendation, c["customer_id"]), levels, f"risk-{c['customer_id']}")
+    for row in range(0, len(risky), 2):   # one st.columns per row: cards side by side line up
+        for col, c in zip(st.columns(2, gap="medium"), risky[row:row + 2]):
+            with col:
+                ui.customer_card(c, ui.load(ui.recommendation, c["customer_id"]), levels, f"risk-{c['customer_id']}")
 
     if ui.section(tr("Waiting for your review", "Wartet auf Prüfung"), pending, "var(--lt-dot-pending)", "queue",
                   tr("View all", "Alle ansehen")):
-        st.switch_page("views/approvals.py")
+        switch_page("views/approvals.py")
     shown = {c["customer_id"] for c in risky}
     top = [d for d in queue if d["customer_id"] not in shown and d["customer_id"] in by_id][:4]
     if not top:
         st.info(tr("No decisions are waiting for review.", "Keine Entscheidung wartet auf Prüfung."))
-    cols = st.columns(2, gap="medium")
-    for i, d in enumerate(top):
-        with cols[i % 2]:
-            ui.customer_card(by_id[d["customer_id"]], ui.load(ui.recommendation, d["customer_id"]), levels,
-                             f"queue-{d['customer_id']}")
+    for row in range(0, len(top), 2):
+        for col, d in zip(st.columns(2, gap="medium"), top[row:row + 2]):
+            with col:
+                ui.customer_card(by_id[d["customer_id"]], ui.load(ui.recommendation, d["customer_id"]), levels,
+                                 f"queue-{d['customer_id']}")
 
 with side:
     reviewed = ui.load(ui.decisions, "approved") + ui.load(ui.decisions, "rejected")
@@ -112,6 +112,7 @@ with side:
         fig.update_layout(**theme.plotly_layout(title=tr("Contacts by channel", "Kontakte nach Kanal"), height=300),
                           separators=",." if lang() == "de" else ".,")
         fig.update_yaxes(automargin=True)
+        fig.update_xaxes(automargin=True)   # room for the numbers under the bars
         st.plotly_chart(fig, theme=None, config={"displayModeBar": False})
 
 st.caption(tr(ov.get("projected_protected_customer_value_label", ""),

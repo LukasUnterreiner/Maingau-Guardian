@@ -47,6 +47,8 @@
 :root { --lt-shadow-soft: 0 1px 2px rgba(0, 38, 87, 0.04), 0 12px 32px rgba(0, 38, 87, 0.07); }
 .stMainBlockContainer, .block-container { padding-top: 2.6rem; max-width: 1440px; }
 [data-testid="stSidebarNav"] a { border-radius: 999px; padding-left: 14px; }
+/* segmented controls as tall as the select boxes next to them, so their labels and edges line up */
+[data-testid="stMain"] button[data-variant="segmented_control"] { min-height: 40px; }
 
 .lt-pagehead { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
 .lt-eyebrow  { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--lt-primary); }
@@ -59,7 +61,8 @@
 @media (max-width: 640px)  { .lt-tiles { grid-template-columns: 1fr; } }
 .lt-tile { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px; background: var(--lt-surface);
            border: 1px solid var(--lt-line); border-radius: var(--lt-radius-xl); box-shadow: var(--lt-shadow-soft); }
-.lt-tile__head { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--lt-ink-2); }
+.lt-tile__head { display: flex; align-items: center; gap: 10px; font-size: 13px; line-height: 17px; font-weight: 600;
+                 color: var(--lt-ink-2); }   /* two lines of label are as tall as the icon: the numbers stay in line */
 .lt-tile__icon { width: 34px; height: 34px; border-radius: 12px; background: var(--lt-sunken); border: 1px solid var(--lt-line);
                  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .lt-tile__icon svg { width: 18px; height: 18px; }
@@ -82,6 +85,11 @@
 
 .stApp [class*="st-key-ccard-"] { background: var(--lt-surface); border: 1px solid var(--lt-line); border-radius: var(--lt-radius-xl);
                                   padding: 18px 18px 10px; box-shadow: var(--lt-shadow-soft); gap: 12px; margin-bottom: 6px; }
+/* cards side by side are as tall as the tallest one, with the actions at the bottom */
+[data-testid="stColumn"] > [data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] > [class*="st-key-ccard-"]) {
+  height: 100%; }
+[data-testid="stLayoutWrapper"]:has(> [class*="st-key-ccard-"]) { flex: 1 1 auto; }
+.stApp [class*="st-key-ccard-"] > :last-child { margin-top: auto; }
 .lt-ccard { display: flex; flex-direction: column; gap: 16px; }
 .lt-ccard__head { display: flex; align-items: center; gap: 14px; }
 .lt-avatar { position: relative; width: 50px; height: 50px; border-radius: 999px; background: var(--av); color: var(--av-ink);
@@ -119,12 +127,45 @@
 .lt-tagid { padding: 1px 7px; border-radius: 8px; background: var(--lt-sunken); border: 1px solid var(--lt-line);
             font-size: 12px; font-weight: 600; color: var(--lt-ink-2); }
 
-/* regions page: ranked list next to the map */
-.lt-reglist { display: flex; flex-direction: column; }
-.lt-reglist__row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 4px 12px;
+/* regions page: the map on the night blue of the sidebar, so the state colours and the spark-yellow pillars stand out */
+.stApp [data-testid="stVerticalBlock"].st-key-card-map {
+  gap: 10px; padding: 18px 20px 20px; border-color: var(--lt-night-line); color: var(--lt-night-text);
+  background: radial-gradient(110% 80% at 50% 35%, var(--lt-night-2) 0%, var(--lt-night) 70%);
+}
+/* the coloured states glow a little; zoomed in, only the chosen state does */
+.st-key-card-map .choroplethlayer > .trace:last-child { filter: drop-shadow(0 0 14px rgba(0, 105, 241, 0.55)); }
+.lt-mapkey { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; padding-top: 16px;
+             border-top: 1px solid var(--lt-night-line); }
+@media (max-width: 640px) { .lt-mapkey { grid-template-columns: 1fr; } }
+.lt-mapkey__block { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.lt-mapkey__title { font-size: 13px; font-weight: 700; color: #FFFFFF; }
+.lt-mapkey__ramp { height: 10px; border-radius: 999px; background: linear-gradient(90deg, #9CCBFF, #0069F1, #1F4F9A); }
+.lt-mapkey__ticks { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--lt-night-text);
+                    font-variant-numeric: tabular-nums; }
+.lt-mapkey__extremes { display: flex; flex-direction: column; gap: 8px; }
+.lt-mapkey__extreme { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lt-mapkey__arrow { width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;
+                    display: inline-flex; align-items: center; justify-content: center; }
+.lt-mapkey__arrow svg { width: 17px; height: 17px; }
+.lt-mapkey__who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.lt-mapkey__small { font-size: 11px; line-height: 14px; color: var(--lt-night-muted); }
+.lt-mapkey__name { font-size: 14px; line-height: 18px; font-weight: 700; color: #FFFFFF; white-space: nowrap; overflow: hidden;
+                   text-overflow: ellipsis; }
+.lt-mapkey__value { font-size: 15px; font-weight: 700; color: #FFFFFF; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lt-mapkey__legend { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 12px; color: var(--lt-night-text); }
+.lt-mapkey__legend > span { display: inline-flex; align-items: center; gap: 8px; }
+.lt-mapkey__pillar { width: 12px; height: 18px; border-radius: 3px 3px 1px 1px;
+                     background: linear-gradient(90deg, var(--lt-spark) 50%, #E0C400 50%); }
+.lt-mapkey__dot { width: 9px; height: 9px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 0 0 2px var(--lt-primary); }
+
+/* regions page: ranked list next to the map; name, bar and value share their columns across all rows (subgrid) */
+.lt-reglist { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; column-gap: 12px; }
+.lt-reglist__row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; row-gap: 4px;
                    align-items: center; padding: 8px 10px; margin: 0 -10px; border-radius: 12px; }
 .lt-reglist__row.is-on { background: var(--lt-primary-tint); }
-.lt-reglist__name { font-size: 14px; font-weight: 600; color: var(--lt-ink); }
+.lt-reglist__name { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 600;
+                    color: var(--lt-ink); }
+.lt-reglist__swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0, 38, 87, 0.15); }
 .lt-reglist__value { font-size: 14px; color: var(--lt-ink-2); text-align: right; font-variant-numeric: tabular-nums; }
 .lt-reglist__bar { height: 8px; border-radius: 999px; background: var(--lt-line); overflow: hidden; }
 .lt-reglist__bar span { display: block; height: 100%; border-radius: 999px; background: var(--lt-primary); }
@@ -132,14 +173,18 @@
 .lt-tiles--two { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 4px; }
 @media (max-width: 640px) { .lt-tiles--two { grid-template-columns: 1fr; } }
 
-/* the Lighty hero sits flush with the buttons below it */
-.lt-hero { margin-bottom: 4px; }
+/* blocked options: the rule chips wrap on a line of their own under the name */
+.lt-option--blocked { row-gap: 8px; }
+.lt-option__rules { grid-column: 2 / -1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 4px; }
+@container (max-width: 560px) { .lt-option__rules { grid-row: 4; } }
 
 /* Streamlit's heading styles must not reach the design's own headings */
 .stApp .lt-hero h2.lt-hero__title { color: #FFFFFF; font-size: 28px; line-height: 34px; font-weight: 700; padding: 0; margin: 0; }
 .stApp .lt-display { padding: 0; }
 .stApp .lt-h1, .stApp .lt-h3 { padding: 0; }
 [data-testid="stMarkdownContainer"] > .lt-grid, [data-testid="stMarkdownContainer"] > .lt-hero { margin: 8px 0 4px; }
+/* the Lighty hero, then Approve / Reject with some air in between */
+[data-testid="stMarkdownContainer"] > .lt-hero { margin-bottom: 18px; }
 .lt-hero__stat-value { font-size: 26px; line-height: 1.1; }
 .stApp h2.lt-h3, .stApp h3.lt-h3 { font-size: 16px; line-height: 24px; font-weight: 600; padding: 0; margin: 0; letter-spacing: 0; }
 

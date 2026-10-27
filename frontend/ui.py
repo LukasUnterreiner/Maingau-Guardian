@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 import lighty_api as api
-from i18n import lang, tr
+from i18n import lang, switch_page, tr
 
 # codes from the API in words: (English, German)
 CHANNEL = {"newsletter_email": ("Newsletter e-mail", "Newsletter-E-Mail"),
@@ -71,6 +71,8 @@ MONTHS_DE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "Augu
              "Dezember"]
 
 ICON = {
+    "up": '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
+    "down": '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
     "shield": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/>',
     "trend": '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
     "inbox": '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/>',
@@ -311,7 +313,7 @@ def review_buttons(rec: dict, key: str, *, open_customer: bool = False) -> None:
         if open_customer and st.button(tr("Open customer", "Kunde öffnen"), icon=":material/arrow_forward:",
                                        type="tertiary", key=f"open-{key}"):
             st.session_state["customer_id"] = rec["customer_id"]
-            st.switch_page("views/customer.py")
+            switch_page("views/customer.py")
     if approve or reject:
         save_review(rec, approve)
 
@@ -419,15 +421,16 @@ def customer_card(c: dict, rec: dict, levels: dict, key: str) -> None:
             f'<div class="lt-segbar" style="--seg: {color};" title="{esc(pct(churn))}">{segments}</div>'
             f'<div class="lt-row" style="gap: 8px;"><strong class="lt-ccard__num">{esc(pct(churn))}</strong>'
             f'<span class="lt-caption lt-ccard__why">{esc(why)}</span></div></div>'
-            f'<div class="lt-ccard__task"><span class="lt-caption">{tr("Lighty recommends", "Lighty empfiehlt")}</span>'
-            f'<div class="lt-row" style="gap: 8px;">{step}<span class="lt-spacer"></span>'
+            # the value sits on the caption line, so a long chip never pushes it onto a line of its own
+            f'<div class="lt-ccard__task"><div class="lt-row" style="gap: 8px;"><span class="lt-caption">'
+            f'{tr("Lighty recommends", "Lighty empfiehlt")}</span><span class="lt-spacer"></span>'
             + (f'<span class="lt-delta--gain">{esc(eur(gain, sign=True))}</span>' if gain > 0 else "")
-            + '</div></div></div>')
+            + f'</div><div class="lt-row" style="gap: 8px;">{step}</div></div></div>')
         # small gap: the German "Ablehnen" and "Freigeben" still fit on one line
         with st.container(horizontal=True, vertical_alignment="center", gap="xsmall", key=f"cact-{key}"):
             if st.button("Details", type="tertiary", key=f"open-{key}"):
                 st.session_state["customer_id"] = c["customer_id"]
-                st.switch_page("views/customer.py")
+                switch_page("views/customer.py")
             st.space("stretch")
             if rec.get("approval_status") == "pending_approval":
                 if st.button(tr("Reject", "Ablehnen"), key=f"reject-{key}"):
@@ -544,13 +547,13 @@ def options(rec: dict) -> str:
         width = f"{max(abs(value) / scale * 100, 2 if value else 0):.0f}%"
         color = DECISION_COLORS[group(o.get("action_type"))]
         if state == "blocked":
-            out.append(f'<div class="lt-option"><span class="lt-rank">{svg("lock", 2.2)}</span>'
-                       f'<div class="lt-stack" style="gap: 6px;"><div style="font-weight: 700; color: var(--lt-ink-2);">'
-                       f'{esc(action_name(o))}</div><div class="lt-row" style="gap: 4px;">'
-                       f'{rule_chips(o.get("exclusion_reasons"))}</div></div>'
+            # the rule chips get their own line under the name, so lock, channel, bar and value stay on the name's line
+            out.append(f'<div class="lt-option lt-option--blocked"><span class="lt-rank">{svg("lock", 2.2)}</span>'
+                       f'<div style="font-weight: 700; color: var(--lt-ink-2);">{esc(action_name(o))}</div>'
                        f'<span class="lt-caption">{esc(channel(o.get("channel")))}</span>'
                        '<div class="lt-bar lt-bar--blocked"><span></span></div>'
-                       f'<span class="lt-num lt-delta--void">{esc(eur(value, sign=True))}</span></div>')
+                       f'<span class="lt-num lt-delta--void">{esc(eur(value, sign=True))}</span>'
+                       f'<div class="lt-option__rules">{rule_chips(o.get("exclusion_reasons"))}</div></div>')
             continue
         delta_class = "lt-delta--gain" if value > 0 else "lt-delta--loss" if value < 0 else ""
         delta_style = "" if delta_class else ' style="font-weight: 700; color: var(--lt-ink-2);"'

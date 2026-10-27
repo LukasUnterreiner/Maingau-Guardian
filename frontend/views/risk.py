@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 
 import ui
-from i18n import tr
+from i18n import switch_page, tr
 
 index = ui.load(ui.customer_index)
 levels = ui.risk_levels(index)
@@ -75,4 +75,4 @@ rec = ui.load(ui.recommendation, cid)
 ui.html_block(ui.risk_card(c360, rec, levels))
 if st.button(tr(f"Open {cid}", f"{cid} öffnen"), icon=":material/arrow_forward:", type="tertiary", key="open-risk"):
     st.session_state["customer_id"] = cid
-    st.switch_page("views/customer.py")
+    switch_page("views/customer.py")

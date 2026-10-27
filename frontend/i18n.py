@@ -25,3 +25,9 @@ def lang() -> str:
 
 def tr(en: str, de: str) -> str:
     return de if lang() == "de" else en
+
+
+def switch_page(page: str) -> None:
+    # st.switch_page on its own clears the whole address, and Streamlit refuses that while ?lang= is bound to
+    # the switch. An empty dict clears it without the check; the switch puts ?lang= back on the next page.
+    st.switch_page(page, query_params={})
