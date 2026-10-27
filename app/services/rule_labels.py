@@ -74,7 +74,30 @@ def name(code: str | None, lang: str = "en") -> str:
     return de if lang == "de" else en
 
 
+# English has no Sie or Du: English texts call the form of address formal or informal (customer wording stays German)
+_Q = "[\"'„“”]?"
+_ADDRESS_EN: list[tuple[re.Pattern, str]] = []
+for _de, _en in (("Sie", "formal"), ("Du", "informal")):
+    _ADDRESS_EN += [
+        (re.compile(rf"\b({_en}ly)\s*\({_Q}{_de}{_Q}\)"), r"\1"),                       # formally (Sie) -> formally
+        (re.compile(rf"\b(?:formal|informal)\s+{_Q}{_de}\b{_Q}"), _en),                    # formal Sie -> formal
+        (re.compile(rf"{_Q}\b{_de}\b{_Q}\s*\((?:formal|informal)\)"), _en),               # Sie (formal) -> formal
+        (re.compile(rf"{_Q}\b{_de}\b{_Q}[- ](?=(?:form|address)\b)"), f"{_en} "),          # Sie form -> formal form
+        (re.compile(rf"(\b[Ff]orm of address:?\s*){_Q}{_de}\b{_Q}"), rf"\g<1>{_en}"),       # form of address: Sie
+        (re.compile(rf"\({_Q}{_de}{_Q}\)"), f"({_en})"),                                     # (Sie) -> (formal)
+        (re.compile(rf"\b(?:with|using) {_Q}{_de}\b{_Q}"), f"{_en}ly"),                      # with Sie -> formally
+    ]
+
+
+def plain_address(text: str) -> str:
+    """'Use Sie form' -> 'Use formal form', 'Sie (formal)' -> 'formal', 'Form of address: Du' -> '... informal'."""
+    for rx, repl in _ADDRESS_EN:
+        text = rx.sub(repl, text)
+    return text
+
+
 def humanize(text: str, lang: str) -> str:
     """Replace known codes inside a text; anything else that looks like a code (e.g. NO_CONTACT) is kept."""
     text = _CODE.sub(lambda m: label(m.group(0), lang) if m.group(0) in LABELS else m.group(0), text)
-    return _NAME.sub(lambda m: name(m.group(0), lang), text)
+    text = _NAME.sub(lambda m: name(m.group(0), lang), text)
+    return text if lang == "de" else plain_address(text)

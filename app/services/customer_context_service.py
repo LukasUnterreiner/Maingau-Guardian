@@ -328,7 +328,7 @@ class CustomerContextService:
         tone_de = ("Du" if tone.value == "du" else "Sie") + (
             " (aus Formulierungen des Kunden in Tickets/Gesprächen abgeleitet)" if tone.source != "default_formal"
             else " (Standard; aus den Texten nicht ableitbar)")
-        tone_en = ("Du (informal)" if tone.value == "du" else "Sie (formal)") + (
+        tone_en = ("informal" if tone.value == "du" else "formal") + (  # English has no Sie or Du
             " (derived from the customer's own wording in tickets/calls)" if tone.source != "default_formal"
             else " (default; not derivable from the texts)")
         channel = self.lighty.eligibility.service_channel(s)

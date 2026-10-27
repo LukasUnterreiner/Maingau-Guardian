@@ -393,7 +393,7 @@ class EmployeeCopilotService:
                                  "No additional marketing contact: the contact limit or minimum gap applies."),
                                [f.fact_id for f in cf]))
         items.append(Point(L(lang, f"Anrede konsequent in der {'Du' if sit.tonality == 'du' else 'Sie'}-Form halten.",
-                             f"Keep to the {'Du' if sit.tonality == 'du' else 'Sie'} form of address."),
+                             f"Keep to the {'informal' if sit.tonality == 'du' else 'formal'} form of address."),
                            self._ids(ctx, "communication")))
         return items
 
@@ -576,8 +576,8 @@ class EmployeeCopilotService:
             points.append(Point(L(lang, f"Anrede: {'Du' if sit.tonality == 'du' else 'Sie'}. Zuhören, das Anliegen "
                                         "zusammenfassen, nächste Schritte verbindlich, aber ohne Zusagen zu "
                                         "Ergebnissen vereinbaren.",
-                                  f"Form of address: {'Du' if sit.tonality == 'du' else 'Sie'}. Listen, summarise the "
-                                  "request, agree next steps without promising outcomes."),
+                                  f"Form of address: {'informal' if sit.tonality == 'du' else 'formal'}. Listen, "
+                                  "summarise the request, agree next steps without promising outcomes."),
                                 self._ids(ctx, "communication")))
         if not points:
             points.append(Point(L(lang, "Dazu liegen mir keine passenden Daten vor. Ich kann zu Service-Situation, "
@@ -608,7 +608,7 @@ class EmployeeCopilotService:
                              f"The acceptance probability rests on few observations ({r.acceptance.deliveries})."))
         if ctx.situation.tonality_source == "default_formal":
             assumptions.append(L(lang, "Anrede Sie ist ein Standard, nicht aus Kundentexten abgeleitet.",
-                                 "The Sie form is a default, not derived from customer texts."))
+                                 "The formal form of address is a default, not derived from customer texts."))
         assumptions.append(L(lang, "Geldwerte und Wahrscheinlichkeiten sind Modellschätzungen (CLV-Methode, beobachtete "
                                    "Quoten), keine garantierten Ergebnisse und kein Kausalnachweis.",
                              "Monetary values and probabilities are model estimates (CLV method, observed rates), not "
@@ -735,7 +735,7 @@ class EmployeeCopilotService:
         facts_out, refs_out = self._facts_out(ctx, used, lang)
         unc = self._uncertainty(ctx, facts_selected, composed, intents, lang)
         if llm and llm.get("uncertainty"):
-            unc["reasons"].append(llm["uncertainty"])
+            unc["reasons"].append(humanize(llm["uncertainty"], lang))
         if ctx.situation.service_first:
             warnings.append(self._service_warning(ctx, lang))
         for w in ctx.withheld:
@@ -821,7 +821,7 @@ class EmployeeCopilotService:
                                     "and without committing to terms."), [churn.fact_id]))
         approach.append(nba)
         approach.append(Point(L(lang, f"Anrede: {'Du' if sit.tonality == 'du' else 'Sie'}.",
-                                f"Form of address: {'Du' if sit.tonality == 'du' else 'Sie'}."),
+                                f"Form of address: {'informal' if sit.tonality == 'du' else 'formal'}."),
                               self._ids(ctx, "communication")))
         situation_txt = (L(lang, "Aktuell: " + "; ".join(issues) + ".", "Currently: " + "; ".join(issues) + ".")
                          if issues else L(lang, "Kein offener Service-Fall.", "No open service case."))
@@ -862,8 +862,8 @@ class EmployeeCopilotService:
             out, warn, reason = self._try_llm_briefing(ctx, selected, sections, lang)
             warnings += warn
             if out:
-                sections["current_situation"]["text"] = out["current_situation"]
-                sections["recommended_approach"]["text"] = out["recommended_approach"]
+                sections["current_situation"]["text"] = humanize(out["current_situation"], lang)
+                sections["recommended_approach"]["text"] = humanize(out["recommended_approach"], lang)
                 origin.update({"response": "llm", "llm_used": True, "model": self.lighty.cfg.ai_model})
             else:
                 origin["fallback_reason"] = reason

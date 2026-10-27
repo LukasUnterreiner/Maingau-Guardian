@@ -579,6 +579,30 @@ def test_ai_wording_never_replaces_a_requested_draft(fake_lighty):
     assert r["response"].endswith("Lighty only writes wording for the channel it recommends.")
 
 
+def test_english_says_formal_not_sie(copilot_client, fake_lighty):
+    # English has no Sie or Du: English answers say formal / informal; the customer wording stays German
+    sie_du = re.compile(r"\b(Sie|Du)\b")
+    for q in ("How should I approach this customer?", "What should I avoid?"):
+        b = chat(copilot_client, "MG-100004", q, lang="en").json()
+        assert not sie_du.search(b["response"]) and "formal" in b["response"], b["response"]
+        assert not any(sie_du.search(f["text"]) for f in b["supporting_facts"])
+    brief = copilot_client.get("/api/customers/MG-100004/briefing?language=en", headers=SVC).json()
+    english = {k: v for k, v in brief["sections"].items() if k != "suggested_opening"}  # the opening is German
+    assert brief["sections"]["suggested_opening"]["text"].startswith("Ich sehe")
+    assert not sie_du.search(json.dumps(english, ensure_ascii=False)), english
+
+    def reply(messages):
+        nba_id = re.search(r"ENGINE DECISION \(authoritative, do not change\): \[(F\d+)\]",
+                           messages[-1]["content"]).group(1)
+        return json.dumps({"answer": "Resolve the complaint first. Use Sie form, listen and agree next steps.",
+                           "suggested_customer_message": None, "fact_ids": [nba_id], "uncertainty": None})
+    lt, llm = fake_lighty(reply)
+    r = lt.copilot.chat(emp(), "MG-100004", "How should I approach this customer?", None, "en")
+    assert r["answer_origin"]["response"] == "llm"
+    assert "Use formal form" in r["response"] and not sie_du.search(r["response"])
+    assert "never \"Sie\"" in llm.calls[-1][0]["content"]  # the prompt tells the model as well
+
+
 def test_markup_from_llm_is_rejected(fake_lighty):
     lt, _ = fake_lighty(json.dumps({"answer": "<script>alert(1)</script> Erst klären.",
                                     "suggested_customer_message": "<b>Hallo</b>", "fact_ids": ["F1"],
