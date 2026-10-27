@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Renders guardian-pitch.html into the 30-second pitch video.
+// Renders lighty-pitch.html into the 30-second pitch video.
 //
-//   node render.cjs                         # → guardian-pitch-30s.mp4, storyboard.png, timing-report.md
-//   node render.cjs --url maingau.de/demo   # with the real booking link on the end card
+//   node capture.cjs                        # first: record the real app into demo-frames/ (app must be running)
+//   node render.cjs                         # → lighty-pitch-30s.mp4, storyboard.png, timing-report.md
 //   node render.cjs --bg "#FFFFFF" --accent "#0069F1" --out other.mp4
 //   node render.cjs --stills ./frames       # key frames only, no video (fast check)
 //
@@ -18,20 +18,20 @@ const DIR = __dirname;
 const FPS = 30;
 const DURATION = 30;
 const FRAMES = FPS * DURATION;
-const DISSOLVES = [9, 14, 19, 24, 27];   // centres of the 0.5 s cross-dissolves
+const DISSOLVES = [7.5, 26.5];   // centres of the 0.5 s cross-dissolves
 const MAX_WORDS = 8;
-const MIN_READ = 2.0;
+const MIN_READ = 3.0;
 
 // Storyboard frames: one per beat.
 const KEY_FRAMES = [
-  [2.0, "Hook"], [5.6, "Reveal · name"], [8.2, "Reveal · tagline"],
-  [10.4, "Value 1 · line"], [13.2, "Value 1 · card"], [15.4, "Value 2 · line"],
-  [18.2, "Value 2 · checklist"], [20.4, "Value 3 · line"], [23.2, "Value 3 · bars"],
-  [25.5, "Proof"], [27.5, "Close · logo"], [29.9, "Close · CTA"],
+  [2.0, "The problem"], [6.0, "Lighty"], [9.6, "Churn risk page"],
+  [11.6, "Scroll to the customer"], [12.5, "Click: row selected"], [14.4, "Churn card: why"],
+  [16.4, "Customer page"], [18.6, "Lighty's next step"], [21.3, "Typing to Ask Lighty"],
+  [22.8, "Lighty answers"], [25.6, "The answer, close up"], [29.0, "Closing"],
 ];
 
 function parseArgs(argv) {
-  const a = { out: path.join(DIR, "guardian-pitch-30s.mp4") };
+  const a = { out: path.join(DIR, "lighty-pitch-30s.mp4") };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i].replace(/^--/, "");
     a[k] = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : true;
@@ -40,7 +40,8 @@ function parseArgs(argv) {
 }
 
 function serve(root) {
-  const types = { ".html": "text/html", ".woff2": "font/woff2", ".wav": "audio/wav", ".png": "image/png", ".js": "text/javascript" };
+  const types = { ".html": "text/html", ".woff2": "font/woff2", ".wav": "audio/wav", ".png": "image/png",
+    ".jpg": "image/jpeg", ".json": "application/json", ".js": "text/javascript" };
   const server = http.createServer((req, res) => {
     const file = path.join(root, decodeURIComponent(new URL(req.url, "http://x").pathname));
     if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
@@ -81,14 +82,14 @@ function timingReport(samples, audio, probe, opts) {
     "",
     `* Output: \`${path.basename(opts.out)}\`, ${probe.width}×${probe.height}, ${probe.fps} fps, ${probe.frames} frames, ` +
       `duration ${probe.duration} s (video stream ${probe.vduration} s, audio stream ${probe.aduration} s)`,
-    `* End-card URL: \`${opts.url || "[URL]"}\``,
     `* Most words visible in a settled frame (outside the 0.5 s dissolves): **${maxSettled.words}** at ${fmt(maxSettled.t)} ` +
       `(${maxSettled.ids.map((s) => `“${s}”`).join(" + ")}); frames over ${MAX_WORDS}: ${overSettled}`,
     `* Lines readable (≥ 50 % opacity) for less than ${MIN_READ} s: ${short.length ? short.map((u) => `“${u.text}”`).join(", ") : "none"}`,
     "",
-    "During each 0.5 s cross-dissolve the outgoing and incoming text overlap at partial opacity; the word limit is checked on settled frames.",
+    "Counted: the titles and captions this video adds. The recorded app screens are not counted. During each 0.5 s " +
+      "cross-dissolve the outgoing and incoming text overlap at partial opacity; the word limit is checked on settled frames.",
     "",
-    "| Text on screen | Words | Readable from | until | Time | ≥ 2 s |",
+    `| Text on screen | Words | Readable from | until | Time | ≥ ${MIN_READ} s |`,
     "|---|---:|---|---|---:|:---:|",
     ...rows,
     "",
@@ -116,10 +117,11 @@ async function main() {
 
   const server = await serve(DIR);
   const q = new URLSearchParams({ render: "1" });
-  for (const k of ["url", "bg", "accent"]) if (typeof opts[k] === "string") q.set(k, opts[k]);
+  for (const k of ["bg", "accent"]) if (typeof opts[k] === "string") q.set(k, opts[k]);
+  if (!fs.existsSync(path.join(DIR, "demo-frames", "manifest.json"))) throw new Error("no demo-frames/: run capture.cjs first");
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
-  await page.goto(`http://127.0.0.1:${server.address().port}/guardian-pitch.html?${q}`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/lighty-pitch.html?${q}`);
   const fontOk = await page.evaluate(() => window.videoReady);
   if (!fontOk) throw new Error("Plus Jakarta Sans did not load; refusing to render with a fallback font");
 
@@ -129,7 +131,7 @@ async function main() {
   if (stillsDir) {
     fs.mkdirSync(stillsDir, { recursive: true });
     for (const [t, label] of KEY_FRAMES) {
-      await page.evaluate((s) => window.renderAt(s), t);
+      await page.evaluate(async (s) => { await window.renderAt(s); }, t);
       const file = path.join(stillsDir, `${t.toFixed(1).padStart(4, "0")}s.png`);
       await page.screenshot({ path: file });
       console.log(`${fmt(t)}  ${label}  → ${file}`);
@@ -155,7 +157,7 @@ async function main() {
   const started = Date.now();
   for (let i = 0; i < FRAMES; i++) {
     const t = i / FPS;
-    const text = await page.evaluate((s) => { window.renderAt(s); return window.measureText(); }, t);
+    const text = await page.evaluate(async (s) => { await window.renderAt(s); return window.measureText(); }, t);
     samples.push({ t, text });
     const png = await page.screenshot({ type: "png" });
     if (keyIdx.has(i)) stills.push([t, keyIdx.get(i), png]);
@@ -176,7 +178,7 @@ async function main() {
     main { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px 24px; }
     figure { margin: 0; } img { width: 100%; display: block; border-radius: 10px; border: 1px solid #E2EAF6; }
     figcaption { margin-top: 10px; } b { color: #002657; font-weight: 750; margin-right: 8px; }
-  </style><h1>MAINGAU Guardian · 30-second pitch · storyboard</h1><main>${tiles}</main>`);
+  </style><h1>Lighty · 30-second pitch · storyboard</h1><main>${tiles}</main>`);
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: path.join(DIR, "storyboard.png"), fullPage: true });
   await browser.close(); server.close();

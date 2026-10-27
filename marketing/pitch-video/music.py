@@ -1,12 +1,13 @@
-"""Music bed for the 30-second Guardian pitch: soft, instrumental, no vocals, no samples.
+"""Music bed for the 30-second Lighty pitch: soft, instrumental, no vocals, no samples.
 
 Everything is synthesised with numpy (felt-piano arpeggio, warm pad, sub bass, room reverb), so the track is
 royalty-free and identical on every run. 120 bpm, every scene boundary falls on a beat.
 
-  0:00  Bm7, pad and a few piano notes, a little lower than the rest
-  0:04  lift into D (add9): brighter pad, arpeggio and bass come in    ← "rises slightly at the reveal"
-  0:09  G maj7 · 0:14 Bm7 · 0:19 Em7 · 0:24 Asus4 → A (tension under the proof figure)
-  0:27  resolves to D, arpeggio stops, chord rings out to 0:30          ← "resolves on the end card"
+  0:00    Bm7, pad and a few piano notes, a little lower than the rest (the problem)
+  0:04    lift into D (add9): brighter pad, arpeggio and bass come in   ← rises at the Lighty reveal
+  0:07.5  G maj7 · 0:11 Bm7 · 0:15 Em7 · 0:19.5 G maj7 under the dashboard demo
+  0:23    Asus4 → 0:25 A: tension while Lighty's answer is on screen
+  0:26.5  resolves to D, arpeggio stops, chord rings out to 0:30        ← resolves on the closing line
 
 Usage: python3 music.py out.wav   (prints loudness and section levels as JSON)
 """
@@ -38,14 +39,15 @@ def hz(note: str) -> float:
 
 # (start, end, pad voicing, bass, arpeggio tones)
 CHORDS = [
-    (0.0, 4.0, ["F#3", "A3", "B3", "D4"], None, None),                      # Bm7
-    (4.0, 9.0, ["F#3", "A3", "D4", "E4"], "D2", ["D4", "F#4", "A4", "E5"]),  # Dadd9
-    (9.0, 14.0, ["F#3", "G3", "B3", "D4"], "G2", ["D4", "G4", "B4", "D5"]),  # Gmaj7
-    (14.0, 19.0, ["F#3", "A3", "B3", "D4"], "B1", ["B3", "D4", "F#4", "A4"]),  # Bm7
-    (19.0, 24.0, ["E3", "G3", "B3", "D4"], "E2", ["E4", "G4", "B4", "D5"]),  # Em7
-    (24.0, 25.5, ["E3", "A3", "B3", "D4"], "A1", ["A3", "D4", "E4", "A4"]),  # Asus4
-    (25.5, 27.0, ["E3", "A3", "B3", "C#4"], "A1", ["A3", "C#4", "E4", "A4"]),  # A
-    (27.0, 30.0, ["F#3", "A3", "D4", "E4"], "D2", None),                     # Dadd9, resolution
+    (0.0, 4.0, ["F#3", "A3", "B3", "D4"], None, None),                        # Bm7
+    (4.0, 7.5, ["F#3", "A3", "D4", "E4"], "D2", ["D4", "F#4", "A4", "E5"]),    # Dadd9
+    (7.5, 11.0, ["F#3", "G3", "B3", "D4"], "G2", ["D4", "G4", "B4", "D5"]),    # Gmaj7
+    (11.0, 15.0, ["F#3", "A3", "B3", "D4"], "B1", ["B3", "D4", "F#4", "A4"]),  # Bm7
+    (15.0, 19.5, ["E3", "G3", "B3", "D4"], "E2", ["E4", "G4", "B4", "D5"]),   # Em7
+    (19.5, 23.0, ["F#3", "G3", "B3", "D4"], "G2", ["D4", "G4", "B4", "D5"]),  # Gmaj7
+    (23.0, 25.0, ["E3", "A3", "B3", "D4"], "A1", ["A3", "D4", "E4", "A4"]),   # Asus4
+    (25.0, 26.5, ["E3", "A3", "B3", "C#4"], "A1", ["A3", "C#4", "E4", "A4"]),  # A
+    (26.5, 30.0, ["F#3", "A3", "D4", "E4"], "D2", None),                      # Dadd9, resolution
 ]
 
 t_all = np.arange(N) / SR
@@ -97,7 +99,7 @@ def pad() -> np.ndarray:
     out *= 1 + 0.05 * np.sin(2 * np.pi * 0.17 * t_all)          # slow breathing
     dark = np.stack([lowpass(c, 700) for c in out])
     bright = np.stack([lowpass(c, 2400) for c in out])
-    open_up = automation([(0, 0), (3.0, 0), (4.0, 0.65), (26.5, 0.65), (27.5, 0.45), (30, 0.4)])
+    open_up = automation([(0, 0), (3.0, 0), (4.0, 0.65), (26.0, 0.65), (27.0, 0.45), (30, 0.4)])
     return dark * (1 - open_up) + bright * open_up
 
 
@@ -134,8 +136,9 @@ def piano() -> np.ndarray:
         put(note, 0.05 + 0.07 * k, 0.42, 3.8)
     put("F#4", 2.0, 0.3, 2.0, 0.2)
     put("A4", 3.0, 0.24, 1.2, 0.25)
+    put("B3", 3.5, 0.22, 1.0, -0.15)
 
-    # 0:04 – 0:27 arpeggio, quarter notes, up and down
+    # 0:04 – 0:26.5 arpeggio, quarter notes, up and down
     order = [0, 1, 2, 3, 2, 1]
     for start, end, _, _, arp in CHORDS:
         if not arp:
@@ -143,16 +146,16 @@ def piano() -> np.ndarray:
         beats = int(round((end - start) / BEAT))
         for b in range(beats):
             at = start + b * BEAT
-            if at >= 27.0:
+            if at >= 26.5:
                 break
             vel = (0.56 if b == 0 else 0.4) + rng.uniform(-0.03, 0.03)
             pan = (-0.25, -0.08, 0.08, 0.25)[order[b % 6]]
             put(arp[order[b % 6]], at, vel, 2.2, pan)
 
-    # 0:27 resolution: rolled D chord that rings out
+    # 0:26.5 resolution: rolled D chord that rings out
     for k, note in enumerate(["D2", "A2", "D3", "F#3", "A3", "E4"]):
-        put(note, 27.0 + 0.06 * k, (0.3, 0.36, 0.44, 0.48, 0.5, 0.48)[k], 3.0)
-    put("D5", 27.5, 0.26, 2.5, 0.2)
+        put(note, 26.5 + 0.06 * k, (0.3, 0.36, 0.44, 0.48, 0.5, 0.48)[k], 3.5)
+    put("D5", 27.0, 0.26, 3.0, 0.2)
     return out
 
 
@@ -211,10 +214,10 @@ def main(path: str) -> None:
     pad_n = p / np.abs(p).max()
     sub_n = sub / np.abs(sub).max()
     dry = 0.45 * pad_n + 0.9 * keys_n
-    mix = dry + 0.42 * reverb(0.3 * pad_n + 0.65 * keys_n) + 0.11 * sub_n * automation([(0, 0), (4, 0), (4.3, 1), (30, 1)])
+    mix = dry + 0.42 * reverb(0.3 * pad_n + 0.65 * keys_n) + 0.11 * sub_n * automation([(0, 0), (4.0, 0), (4.3, 1), (30, 1)])
     mix = highpass(mix, 38)
 
-    level = automation([(0, 0.72), (3.0, 0.72), (4.0, 1.0), (27.0, 1.0), (28.6, 0.92), (30.0, 0.92)])
+    level = automation([(0, 0.82), (3.0, 0.82), (4.0, 1.0), (26.5, 1.0), (28.1, 0.92), (30.0, 0.92)])
     tail = np.ones(N)
     fade = t_all > 28.9
     tail[fade] = np.cos(np.pi / 2 * (t_all[fade] - 28.9) / 1.1) ** 2  # rings out to silence at 0:30
@@ -233,8 +236,8 @@ def main(path: str) -> None:
         seg = mix[:, int(a * SR):int(b * SR)]
         return round(20 * np.log10(np.sqrt((seg ** 2).mean())), 1)
 
-    sections = [("0:00–0:04 hook", 0.5, 4.0), ("0:04–0:09 reveal", 4.0, 9.0), ("0:09–0:24 values", 9.0, 24.0),
-                ("0:24–0:27 proof", 24.0, 27.0), ("0:27–0:30 end card", 27.0, 30.0)]
+    sections = [("0:00–0:04 the problem", 0.5, 4.0), ("0:04–0:07.5 Lighty", 4.0, 7.5),
+                ("0:07.5–0:26.5 dashboard demo", 7.5, 26.5), ("0:26.5–0:30 closing", 26.5, 30.0)]
     print(json.dumps({"lufs": lufs, "peak_dbfs": peak, "samples": N, "seconds": N / SR,
                       "sections": [{"name": n, "rms_dbfs": rms(a, b)} for n, a, b in sections]}))
 

@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lighty Pitch Video</title>
+<!--
+  Lighty · 30-second pitch video · 1920×1080 · 30 fps
+
+  Every frame is a pure function of time: renderAt(t) draws second t.
+  render.cjs steps through t = 0, 1/30, … 29.967 and pipes screenshots into ffmpeg.
+  Opened over HTTP (python3 -m http.server, then /lighty-pitch.html) it is a preview player.
+
+  The dashboard part shows frames of the real Lighty web app, recorded by capture.cjs into demo-frames/
+  (real pages, clicks, scrolling, typing and chat answer). This file adds the window frame, the camera
+  moves, the mouse pointer (headless Chromium draws none) and the captions.
+
+  Settings (also as query parameters ?bg=…&accent=…):
+    background  #F1F6FF  MAINGAU blue-grey-light (the web app's canvas)
+    accent      #004BAD  MAINGAU brand blue
+    typeface    Plus Jakarta Sans (OFL), the web app's typeface
+    logo        frontend/static/lighty-bulb.svg
+-->
+<style>
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("fonts/PlusJakartaSans-latin-wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: block;
+}
+
+:root {
+  --bg: #F1F6FF;
+  --accent: #004BAD;
+  --ink: #002657;
+  --ink-2: #1B4274;
+  --muted: #567398;
+  --line: #E2EAF6;
+  --click: #0069F1;
+  --font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #0B1A30; }
+body.render { background: var(--bg); }
+
+#stage {
+  position: relative; width: 1920px; height: 1080px; overflow: hidden;
+  background: var(--bg); color: var(--ink); font-family: var(--font);
+  -webkit-font-smoothing: antialiased; transform-origin: 0 0;
+}
+.scene { position: absolute; inset: 0; opacity: 0; visibility: hidden; }
+.center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+
+/* ---------- 1 hook */
+.stat { font-size: 260px; font-weight: 780; letter-spacing: -0.05em; line-height: 0.95; color: var(--accent); }
+.stat-line { margin: 34px 0 0; font-size: 72px; font-weight: 650; letter-spacing: -0.028em; color: var(--ink); }
+
+/* ---------- logo lockup */
+.lockup { display: flex; align-items: center; gap: 44px; }
+.bulb { display: block; }
+.wordmark { font-weight: 780; letter-spacing: -0.045em; line-height: 1; color: var(--ink); }
+#s2 .bulb { width: 172px; height: 230px; }
+#s2 .wordmark { font-size: 196px; margin-top: 10px; }
+
+/* ---------- 3 demo */
+.world { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+.window {
+  position: absolute; left: 256px; top: 54px; width: 1408px; height: 832px;
+  border-radius: 20px; overflow: hidden; background: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0, 38, 87, .06), 0 40px 90px -24px rgba(0, 38, 87, .28);
+  outline: 1px solid rgba(0, 38, 87, .08);
+}
+.titlebar {
+  height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 18px;
+  background: #FFFFFF; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--muted);
+}
+.titlebar i { width: 12px; height: 12px; border-radius: 50%; background: var(--line); }
+.titlebar .title { position: absolute; left: 0; right: 0; text-align: center; font-weight: 600; pointer-events: none; }
+.titlebar .demo {
+  margin-left: auto; padding: 3px 10px; border-radius: 999px; border: 1px dashed #9DB6D6;
+  font-size: 12.5px; font-weight: 650; color: var(--ink-2); position: relative;
+}
+.viewport {
+  position: absolute; left: 0; top: 40px; width: 1600px; height: 900px;
+  transform: scale(0.88); transform-origin: 0 0; overflow: hidden; background: var(--bg);
+}
+.viewport img { display: block; width: 1600px; height: 900px; }
+#cursor { position: absolute; left: 0; top: 0; width: 30px; height: 30px; opacity: 0; will-change: transform; }
+#cursor svg { display: block; width: 30px; height: 30px; filter: drop-shadow(0 2px 3px rgba(0, 20, 50, .35)); }
+#ripple {
+  position: absolute; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%;
+  border: 3px solid var(--click); background: color-mix(in srgb, var(--click) 12%, transparent); opacity: 0;
+}
+
+.captions { position: absolute; left: 0; right: 0; bottom: 56px; height: 96px; display: grid; place-items: center; }
+.caption {
+  grid-area: 1 / 1; display: inline-flex; align-items: center; padding: 22px 44px; border-radius: 999px;
+  background: var(--ink); color: #FFFFFF; font-size: 46px; font-weight: 650; letter-spacing: -0.02em;
+  white-space: nowrap; box-shadow: 0 18px 40px -16px rgba(0, 38, 87, .55); opacity: 0;
+}
+
+/* ---------- 4 close */
+#s4 .bulb { width: 150px; height: 200px; }
+.closing { margin: 64px 0 0; font-size: 72px; font-weight: 650; letter-spacing: -0.028em; text-align: center; line-height: 1.2; }
+.closing em { font-style: normal; color: var(--accent); }
+
+/* ---------- preview player (not in rendered frames) */
+#player {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 14px; align-items: center;
+  padding: 12px 18px; background: rgba(11, 26, 48, .92); color: #E2EAF6; font: 14px/1.2 system-ui, sans-serif;
+}
+#player button {
+  font: inherit; color: #002657; background: #E2EAF6; border: 0; border-radius: 999px;
+  padding: 7px 16px; cursor: pointer; min-width: 74px;
+}
+#player input[type=range] { flex: 1; min-width: 0; }
+#player output { font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; }
+body.render #player { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- Lighty bulb, same artwork as frontend/static/lighty-bulb.svg -->
+  <symbol id="bulb" viewBox="404 288 691 925">
+    <path fill="#FFE500" d="M579 934A345 345 0 1 1 921 934V945A56 56 0 0 1 865 1001H635A56 56 0 0 1 579 945Z"/>
+    <path fill="#002D67" d="M727 395H773V555A101 101 0 0 1 672 656H511V610H727Z"/>
+    <path fill="#002D67" d="M990 612V658H774V875H727V713A102 102 0 0 1 829 612Z"/>
+    <path fill="#002D67" d="M887 396L915 474L993 502L915 530L887 608L859 530L781 502L859 474Z"/>
+    <rect fill="#002D67" x="592" y="1027" width="317" height="45" rx="22.5"/>
+    <rect fill="#002D67" x="592" y="1098" width="317" height="45" rx="22.5"/>
+    <rect fill="#002D67" x="629" y="1168" width="240" height="45" rx="22.5"/>
+  </symbol>
+</svg>
+
+<div id="stage">
+
+  <!-- 1 · 0:00–0:04 · the problem -->
+  <section class="scene" id="s1">
+    <div class="center" id="hook">
+      <div class="stat t">55–60%</div>
+      <p class="stat-line t">of customers cancel after just one year.</p>
+    </div>
+  </section>
+
+  <!-- 2 · 0:04–0:07.5 · Lighty (horizontal wipe) -->
+  <section class="scene" id="s2">
+    <div class="center" id="s2-wipe">
+      <div class="lockup" id="s2-lockup">
+        <svg class="bulb"><use href="#bulb"/></svg>
+        <div class="wordmark t" id="s2-name">Lighty</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · 0:07.5–0:26.5 · the dashboard, recorded from the real app -->
+  <section class="scene" id="s3">
+    <div class="world" id="world">
+      <div class="window">
+        <div class="titlebar"><i></i><i></i><i></i><span class="title">Lighty · MAINGAU Energie</span><span class="demo">Demo data</span></div>
+        <div class="viewport" id="viewport">
+          <img id="ui" alt="">
+          <div id="ripple"></div>
+          <div id="cursor"><svg viewBox="0 0 30 30"><path d="M5 3.5v20.2l5.3-5.1 3.4 8 3.6-1.6-3.4-7.8h7.3z" fill="#0B1A30" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="captions">
+      <div class="caption t" id="cap-a">See who is likely to cancel, and why.</div>
+      <div class="caption t" id="cap-b">Get the next best step to keep them.</div>
+      <div class="caption t" id="cap-c">Ask Lighty how to keep each customer.</div>
+    </div>
+  </section>
+
+  <!-- 4 · 0:26.5–0:30 · closing -->
+  <section class="scene" id="s4">
+    <div class="center">
+      <svg class="bulb"><use href="#bulb"/></svg>
+      <p class="closing t">Spot churn early. Keep customers <em>past year one.</em></p>
+    </div>
+  </section>
+</div>
+
+<div id="player">
+  <button id="play" type="button">Play</button>
+  <input id="scrub" type="range" min="0" max="29.967" step="any" value="0" aria-label="Time">
+  <output id="clock">0:00.0</output>
+</div>
+<audio id="music" src="music.wav" preload="auto"></audio>
+
+<script>
+"use strict";
+const DURATION = 30;
+const FPS = 30;
+const params = new URLSearchParams(location.search);
+const RENDER = params.has("render");
+const $ = (id) => document.getElementById(id);
+const stage = $("stage");
+
+if (RENDER) document.body.classList.add("render");
+if (params.get("bg")) stage.style.setProperty("--bg", params.get("bg"));
+if (params.get("accent")) stage.style.setProperty("--accent", params.get("accent"));
+
+// ---------------------------------------------------------------- timing
+// Scene starts. Cross-dissolves are 0.5 s, centred on each boundary; 0:04 is the wipe instead.
+const BOUNDS = [0, 4, 7.5, 26.5, 30];
+const HALF = 0.25;
+const WIPE = { at: 4.0, dur: 0.7, feather: 160 };
+
+// Text builds: [start, duration] in seconds. Captions change one after the other, never overlapping.
+const BUILD = {
+  "hook":  { in: [0.15, 0.6], out: [3.5, 0.4] },
+  "cap-a": { in: [7.8, 0.35], out: [14.85, 0.25] },
+  "cap-b": { in: [15.15, 0.35], out: [19.3, 0.25] },
+  "cap-c": { in: [19.6, 0.35] },
+};
+
+// Recorded clips (demo-frames/manifest.json) on the timeline: [start, clip, frames per output frame].
+// A clip plays from its first frame and then holds its last one until the next clip starts.
+const PLAY = [
+  [7.25, "risk"],
+  [10.6, "risk-scroll"],
+  [11.2, "grid-scroll"],
+  [12.32, "row-selected"],          // the row was clicked at 12.25
+  [12.6, "card-scroll"],
+  [15.72, "customer"],              // "Open MG-…" was clicked at 15.62
+  [16.1, "hero-scroll"],
+  [19.45, "ask-scroll"],
+  [20.62, "typing", 0.7],           // the input was clicked at 20.5
+  [22.3, "sending", 0],              // hold the first frame: the question is posted, no answer yet
+  [22.62, "answer"],
+];
+
+// Camera: [start, what to frame, seconds to get there]. Boxes are [clip, [box names], padding] in app px.
+const CAM = [
+  [7.25, "home", 0],
+  [8.0, ["risk", ["headline", "tiles"], 28], 1.2],
+  [10.35, ["risk-scroll", ["grid"], 24], 1.0],
+  [12.55, ["card-scroll", ["card"], 24], 0.8],
+  [13.4, ["card-scroll", ["chance", "why"], 40], 0.9],
+  [14.95, ["card-scroll", ["card", "open"], 24], 0.6],
+  [15.72, "home", 0.6],
+  [16.85, ["hero-scroll", ["hero-title"], 60], 0.9],
+  [19.35, ["ask-scroll", ["ask"], 30], 0.9],
+  [23.1, ["answer", ["answer-churn", "answer-price"], 30], 1.0],
+];
+
+// Mouse pointer: [time, x, y] in app px (null = hidden), and the clicks.
+const POINTER = [
+  [10.2, null], [10.35, 1300, 780], [11.0, 960, 700], [12.12, "grid-scroll:click"], [14.95, "grid-scroll:click"],
+  [15.5, "card-scroll:open"], [16.05, "card-scroll:open"], [16.2, null],
+  [19.95, null], [20.05, 1470, 640], [20.42, "typing:input"], [22.25, "typing:input"], [22.4, null],
+];
+const CLICKS = [12.25, 15.6, 20.5];
+
+// Window geometry on the stage: app px (1600×900) → stage px.
+const WIN = { x: 256, y: 94, k: 0.88, w: 1600, h: 900, top: 54, bottom: 886 };
+const FOCUS = { x: 960, y: 470, w: 1760, h: 820 };   // where a framed box goes (keeps clear of the captions)
+const ZMAX = 2.2;
+
+// ---------------------------------------------------------------- easing
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lin = (t, a, b) => clamp((t - a) / (b - a));
+const sine = (x) => -(Math.cos(Math.PI * x) - 1) / 2;
+const outCubic = (x) => 1 - Math.pow(1 - x, 3);
+const inOutCubic = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const smoothstep = (x) => x * x * (3 - 2 * x);
+const mix = (a, b, e) => a + (b - a) * e;
+
+// Cross-dissolve with a slight S-curve, so the midpoint shows two light layers instead of a muddy 50/50 mix.
+const dissolveIn = (p) => smoothstep(clamp(p * 1.25 - 0.25));
+const dissolveOut = (p) => 1 - smoothstep(clamp(p * 1.25));
+
+function sceneOpacity(i, t) {
+  const start = BOUNDS[i], end = BOUNDS[i + 1];
+  if (i === 0) return t < WIPE.at ? 1 : 0;                 // the hook fades its own text
+  let o = i === 1 ? (t >= WIPE.at ? 1 : 0)                 // Lighty: the wipe does the entry
+                  : dissolveIn(lin(t, start - HALF, start + HALF));
+  if (end < DURATION) o *= dissolveOut(lin(t, end - HALF, end + HALF));
+  return o;
+}
+
+function build(el, t, spec) {
+  let o = 1, y = 0;
+  if (spec.in) {
+    const p = lin(t, spec.in[0], spec.in[0] + spec.in[1]);
+    o *= sine(p);
+    y += (1 - outCubic(p)) * 18;
+  }
+  if (spec.out) {
+    const q = lin(t, spec.out[0], spec.out[0] + spec.out[1]);
+    o *= 1 - sine(q);
+    y -= sine(q) * 10;
+  }
+  el.style.opacity = o.toFixed(4);
+  el.style.transform = y ? `translateY(${y.toFixed(2)}px)` : "";
+}
+
+// ---------------------------------------------------------------- recorded app
+let manifest = null;
+const ready = fetch("demo-frames/manifest.json").then((r) => r.json()).then((m) => { manifest = m; });
+
+function frameAt(t) {
+  let k = 0;
+  while (k + 1 < PLAY.length && PLAY[k + 1][0] <= t) k++;
+  const [start, name, rate = 1] = PLAY[k];
+  const frames = manifest.clips[name].frames;
+  return frames[Math.min(frames.length - 1, Math.max(0, Math.floor((t - start) * FPS * rate + 1e-6)))];
+}
+
+function boxOf([clip, names, pad]) {
+  const bs = names.map((n) => manifest.clips[clip].boxes[n]);
+  const x0 = Math.min(...bs.map((b) => b.x)) - pad, y0 = Math.min(...bs.map((b) => b.y)) - pad;
+  const x1 = Math.max(...bs.map((b) => b.x + b.w)) + pad, y1 = Math.max(...bs.map((b) => b.y + b.h)) + pad;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+function pointOf(ref) {
+  const [clip, name] = ref.split(":");
+  const b = manifest.clips[clip].boxes[name];
+  return [b.x + b.w / 2, b.y + b.h / 2];
+}
+
+// Camera state: zoom z and the stage point c that sits at FOCUS (z = 1, c = FOCUS is the plain view).
+function cameraFor(target) {
+  if (target === "home") return { z: 1, cx: FOCUS.x, cy: FOCUS.y };
+  const b = boxOf(target);
+  const w = b.w * WIN.k, h = b.h * WIN.k;
+  const z = clamp(Math.min(FOCUS.w / w, FOCUS.h / h), 1, ZMAX);
+  let cx = WIN.x + (b.x + b.w / 2) * WIN.k, cy = WIN.y + (b.y + b.h / 2) * WIN.k;
+  // never show past the window edge when zoomed in (the bottom 150 px belong to the captions)
+  const keep = (v, lo, hi) => (lo > hi ? (lo + hi) / 2 : clamp(v, lo, hi));
+  cx = keep(cx, WIN.x + FOCUS.x / z, WIN.x + WIN.w * WIN.k - (1920 - FOCUS.x) / z);
+  cy = keep(cy, WIN.top + FOCUS.y / z, WIN.bottom - (1080 - 150 - FOCUS.y) / z);
+  return { z, cx, cy };
+}
+
+function cameraAt(t) {
+  let state = cameraFor(CAM[0][1]);
+  for (const [start, target, dur] of CAM) {
+    if (t < start) break;
+    const next = cameraFor(target);
+    const e = dur ? inOutCubic(lin(t, start, start + dur)) : 1;
+    state = {
+      z: Math.exp(mix(Math.log(state.z), Math.log(next.z), e)),
+      cx: mix(state.cx, next.cx, e), cy: mix(state.cy, next.cy, e),
+    };
+  }
+  return state;
+}
+
+function pointerAt(t) {
+  const keys = POINTER.map(([time, x, y]) =>
+    x === null ? [time, null, null] : [time, ...(typeof x === "string" ? pointOf(x) : [x, y])]);
+  let i = -1;
+  while (i + 1 < keys.length && keys[i + 1][0] <= t) i++;
+  if (i < 0 || keys[i][1] === null) return null;
+  const [t0, x0, y0] = keys[i], prev = keys[i - 1], next = keys[i + 1];
+  let x = x0, y = y0, o = !prev || prev[1] === null ? sine(lin(t, t0, t0 + 0.2)) : 1;
+  if (next && next[1] !== null) {
+    const e = inOutCubic(lin(t, t0, next[0]));
+    x = mix(x0, next[1], e); y = mix(y0, next[2], e);
+  } else if (next) {
+    o *= 1 - sine(lin(t, next[0] - 0.15, next[0]));      // fade out before it hides
+  }
+  return { x, y, o };
+}
+
+// ---------------------------------------------------------------- render
+let lockup = null;     // left/right edge of the Lighty lockup, measured once
+let wipeEdge = null;   // current wipe edge in stage px (null when no wipe is running)
+let shown = null;
+
+function measureLockup() {
+  const s2 = $("s2"); const prev = s2.style.visibility;
+  s2.style.visibility = "visible";
+  const r = $("s2-lockup").getBoundingClientRect(), base = stage.getBoundingClientRect();
+  const k = base.width / 1920;
+  lockup = { left: (r.left - base.left) / k, right: (r.right - base.left) / k };
+  s2.style.visibility = prev;
+}
+
+async function renderAt(t) {
+  await ready;
+  if (!lockup) measureLockup();
+  document.querySelectorAll(".scene").forEach((s, i) => {
+    const o = sceneOpacity(i, t);
+    s.style.opacity = o.toFixed(4);
+    s.style.visibility = o > 0 ? "visible" : "hidden";
+  });
+  for (const [id, spec] of Object.entries(BUILD)) build($(id), t, spec);
+
+  // 0:04 horizontal wipe, left to right, soft edge
+  const wp = lin(t, WIPE.at, WIPE.at + WIPE.dur);
+  const w = $("s2-wipe");
+  if (t >= WIPE.at && wp < 1) {
+    const F = WIPE.feather;
+    wipeEdge = lockup.left - F + sine(wp) * (lockup.right - lockup.left + 2 * F);
+    const m = `linear-gradient(90deg, #000 ${(wipeEdge - F).toFixed(1)}px, transparent ${wipeEdge.toFixed(1)}px)`;
+    w.style.maskImage = m; w.style.webkitMaskImage = m;
+  } else {
+    wipeEdge = null;
+    w.style.maskImage = ""; w.style.webkitMaskImage = "";
+  }
+
+  // the recorded app, the camera, the pointer
+  if (t >= BOUNDS[2] - HALF && t < BOUNDS[3] + HALF) {
+    const img = $("ui"), frame = frameAt(t);
+    if (frame !== shown) {
+      img.src = `demo-frames/${frame}`;
+      await img.decode().catch(() => {});
+      shown = frame;
+    }
+    const cam = cameraAt(t);
+    $("world").style.transform =
+      `translate(${FOCUS.x}px, ${FOCUS.y}px) scale(${cam.z.toFixed(5)}) translate(${(-cam.cx).toFixed(3)}px, ${(-cam.cy).toFixed(3)}px)`;
+
+    const p = pointerAt(t), cur = $("cursor");
+    const press = CLICKS.reduce((s, c) => s * (1 - 0.14 * Math.sin(Math.PI * lin(t, c - 0.06, c + 0.12))), 1);
+    if (p) {
+      cur.style.opacity = p.o.toFixed(3);
+      cur.style.transform = `translate(${(p.x - 5).toFixed(2)}px, ${(p.y - 3.5).toFixed(2)}px) scale(${press.toFixed(3)})`;
+    } else cur.style.opacity = 0;
+    const click = CLICKS.find((c) => t >= c && t < c + 0.5), rip = $("ripple");
+    if (click !== undefined && p) {
+      const q = lin(t, click, click + 0.5);
+      rip.style.opacity = (0.9 * (1 - q)).toFixed(3);
+      rip.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) scale(${(0.3 + 0.9 * outCubic(q)).toFixed(3)})`;
+    } else rip.style.opacity = 0;
+  }
+}
+
+// What a viewer can read: every text unit with its word count and effective opacity (app frames excluded).
+function measureText() {
+  const base = stage.getBoundingClientRect(), k = base.width / 1920;
+  return [...document.querySelectorAll(".t")].map((el) => {
+    let vis = 1;
+    for (let n = el; n && n !== stage; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      if (cs.visibility === "hidden" || cs.display === "none") { vis = 0; break; }
+      vis *= parseFloat(cs.opacity);
+    }
+    if (vis > 0 && wipeEdge !== null && el.closest("#s2")) {
+      const r = el.getBoundingClientRect();
+      const left = (r.left - base.left) / k, width = r.width / k;
+      vis *= clamp((wipeEdge - WIPE.feather / 2 - left) / width);
+    }
+    const text = el.textContent.replace(/\s+/g, " ").trim();
+    return { id: el.id || text, text, words: text.split(" ").length, vis };
+  });
+}
+
+window.renderAt = renderAt;
+window.measureText = measureText;
+window.videoReady = Promise.all([document.fonts.ready, ready]).then(async () => {
+  await renderAt(0);
+  return document.fonts.check('700 84px "Plus Jakarta Sans"');
+});
+
+// ---------------------------------------------------------------- preview player
+if (!RENDER) {
+  const music = $("music"), scrub = $("scrub"), clock = $("clock"), play = $("play");
+  let playing = false, t0 = 0, wall0 = 0;
+  const fit = () => {
+    const k = Math.min(innerWidth / 1920, (innerHeight - 56) / 1080);
+    stage.style.transform = `translate(${(innerWidth - 1920 * k) / 2}px, ${(innerHeight - 56 - 1080 * k) / 2}px) scale(${k})`;
+  };
+  const show = (t) => {
+    renderAt(t); scrub.value = t;
+    clock.textContent = `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+  };
+  const audioOk = () => music.readyState >= 2 && !music.error;
+  // A server without range requests (python -m http.server) cannot seek: then sound only plays from 0:00.
+  const canSeek = (t) => [...Array(music.seekable.length).keys()]
+    .some((i) => music.seekable.start(i) <= t && t <= music.seekable.end(i));
+  let audioClock = false;
+  const tick = () => {
+    if (!playing) return;
+    let t = audioClock && !music.paused ? music.currentTime : t0 + (performance.now() - wall0) / 1000;
+    if (t >= DURATION) { t = DURATION - 1 / FPS; playing = false; play.textContent = "Replay"; music.pause(); }
+    show(t);
+    requestAnimationFrame(tick);
+  };
+  play.onclick = () => {
+    if (playing) { playing = false; music.pause(); play.textContent = "Play"; return; }
+    t0 = +scrub.value >= DURATION - 0.1 ? 0 : +scrub.value; wall0 = performance.now();
+    playing = true; play.textContent = "Pause";
+    audioClock = audioOk() && (t0 === 0 || canSeek(t0));
+    if (audioClock) { music.currentTime = t0; music.play().catch(() => { audioClock = false; }); }
+    requestAnimationFrame(tick);
+  };
+  scrub.oninput = () => { playing = false; music.pause(); play.textContent = "Play"; show(+scrub.value); };
+  addEventListener("resize", fit);
+  fit();
+  window.videoReady.then(() => show(0));
+}
+</script>
+</body>
+</html>
