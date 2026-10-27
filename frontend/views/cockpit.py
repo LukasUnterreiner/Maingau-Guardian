@@ -5,7 +5,7 @@ import streamlit as st
 
 import theme
 import ui
-from i18n import lang, tr
+from i18n import lang, switch_page, tr
 
 ov = ui.load(ui.overview)
 pending = ov.get("pending_approvals", 0)
@@ -68,7 +68,7 @@ main, side = st.columns([2.7, 1], gap="medium")
 with main:
     if ui.section(tr("Likely to cancel", "Kündigungsgefährdet"), len(at_risk), "var(--lt-resolve)", "risk",
                   tr("View all", "Alle ansehen")):
-        st.switch_page("views/risk.py")
+        switch_page("views/risk.py")
     risky = sorted(at_risk, key=lambda c: -(c.get("current_clv_eur") or 0))[:4]
     cols = st.columns(2, gap="medium")
     for i, c in enumerate(risky):
@@ -77,7 +77,7 @@ with main:
 
     if ui.section(tr("Waiting for your review", "Wartet auf Prüfung"), pending, "var(--lt-dot-pending)", "queue",
                   tr("View all", "Alle ansehen")):
-        st.switch_page("views/approvals.py")
+        switch_page("views/approvals.py")
     shown = {c["customer_id"] for c in risky}
     top = [d for d in queue if d["customer_id"] not in shown and d["customer_id"] in by_id][:4]
     if not top:

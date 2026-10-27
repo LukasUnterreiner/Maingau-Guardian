@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 import lighty_api as api
-from i18n import lang, tr
+from i18n import lang, switch_page, tr
 
 # codes from the API in words: (English, German)
 CHANNEL = {"newsletter_email": ("Newsletter e-mail", "Newsletter-E-Mail"),
@@ -311,7 +311,7 @@ def review_buttons(rec: dict, key: str, *, open_customer: bool = False) -> None:
         if open_customer and st.button(tr("Open customer", "Kunde öffnen"), icon=":material/arrow_forward:",
                                        type="tertiary", key=f"open-{key}"):
             st.session_state["customer_id"] = rec["customer_id"]
-            st.switch_page("views/customer.py")
+            switch_page("views/customer.py")
     if approve or reject:
         save_review(rec, approve)
 
@@ -427,7 +427,7 @@ def customer_card(c: dict, rec: dict, levels: dict, key: str) -> None:
         with st.container(horizontal=True, vertical_alignment="center", gap="xsmall", key=f"cact-{key}"):
             if st.button("Details", type="tertiary", key=f"open-{key}"):
                 st.session_state["customer_id"] = c["customer_id"]
-                st.switch_page("views/customer.py")
+                switch_page("views/customer.py")
             st.space("stretch")
             if rec.get("approval_status") == "pending_approval":
                 if st.button(tr("Reject", "Ablehnen"), key=f"reject-{key}"):
