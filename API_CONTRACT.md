@@ -226,7 +226,8 @@ Query: `as_of`. Sections:
 
 ### 4.4 `GET /api/customers/{customer_id}/recommendations` — Lighty decision
 
-Query: `as_of`. Calling it logs the decision in SQLite (idempotent: same inputs → same `decision_id`, approval state is kept).
+Query: `as_of`, `language` (`en` default or `de`: only `reason` changes; the decision log keeps the English reason).
+Calling it logs the decision in SQLite (idempotent: same inputs → same `decision_id`, approval state is kept).
 
 | Field | Type | Description |
 |---|---|---|
@@ -248,7 +249,7 @@ Query: `as_of`. Calling it logs the decision in SQLite (idempotent: same inputs 
 | `required_service_workflow` | bool | `true` if P‑SV‑01 was chosen because of an open complaint although its value is ≤ 0. |
 | `requires_human_approval` | bool | `true` for every external communication. |
 | `approval_status` | enum | See §3. |
-| `reason` | string | Deterministic English explanation built from the computed values. |
+| `reason` | string | Deterministic explanation built from the computed values, in English (or German with `language=de`). Ends with `Marketing restrictions in force: CODES.` (German: `Marketing-Sperren aktiv: CODES.`) when marketing is blocked. |
 | `alternatives` | ActionOption[] | Other **executable** options incl. `NO_CONTACT`, sorted by `expected_dclv_eur` desc. |
 | `blocked_actions` | ActionOption[] | Non‑executable options (best channel per product), with `exclusion_reasons`. Illustrative only. |
 | `eligibility_checks` | Check[] | All checks of the recommended candidate (`[]` for no contact). |
@@ -584,7 +585,7 @@ template for the engine's action, asked for with words like "Entwurf"/"draft"). 
 `requires_human_approval: true` and `auto_send: false`; `validation` shows the checks (no numbers, prices,
 percentages or urgency; Du/Sie).
 
-Warning codes: `sales_restricted` (open service case, no offers), `withheld_free_text`,
+Warning codes: `sales_restricted` (open service case, no offers; the message is in the request `language`), `withheld_free_text`,
 `withheld_behavioural_marketing` (no profiling consent), `untrusted_text_flagged` / `untrusted_text_excluded`
 (customer text that looks like instructions was not used), `llm_unavailable`, `llm_output_rejected`,
 `llm_message_rejected` (AI output failed validation; deterministic text used).
@@ -957,4 +958,5 @@ quoted with their label), and do not show facts of another customer in the same 
 | SQLite file | Default `SQLITE_FILE` is `lighty.sqlite3` (was `guardian.sqlite3`). | Set `SQLITE_FILE=guardian.sqlite3` to keep using the old file. |
 | Churn fields | Customer list items add `churn_drivers`, `clv_service_impact_reported_eur`, `cancellation_pending`; recommendations add `churn_now`, `churn_after_accept`, `churn_after_reject`. | Additive. |
 | Regions | New `GET /api/marketing/regions` (§4.19) and `data/reference/city_regions.csv` (city to state and map position). | Additive. |
+| Language | `GET /api/customers/{id}/recommendations` takes `language=de` for a German `reason` (§4.4). The copilot's `sales_restricted` warning now follows the request `language` (it was always English). | Additive; English output unchanged. |
 | Docker | Service, image, container and volume are named `lighty`. Ports (`80:8000`) and `/srv` mounts are unchanged. | Stop the old `maingau-guardian` container before starting `lighty` (both use port 80). |

@@ -649,10 +649,11 @@ class EmployeeCopilotService:
         return {u.text_id for u in ctx.untrusted if not u.flagged}
 
     @staticmethod
-    def _service_warning(ctx: CustomerContext) -> dict[str, str]:
+    def _service_warning(ctx: CustomerContext, language: str) -> dict[str, str]:
         codes = ctx.situation.service_block_codes
         return {"code": "sales_restricted",
-                "message": "Open service case: no sales offers" + (f" ({labels(codes, 'en')})." if codes else ".")}
+                "message": L(language, "Offener Servicefall: keine Verkaufsangebote", "Open service case: no sales offers")
+                + (f" ({labels(codes, language)})." if codes else ".")}
 
     def _allowed_products(self, ctx: CustomerContext) -> set[str]:
         sit = ctx.situation
@@ -706,7 +707,7 @@ class EmployeeCopilotService:
         if llm and llm.get("uncertainty"):
             unc["reasons"].append(llm["uncertainty"])
         if ctx.situation.service_first:
-            warnings.append(self._service_warning(ctx))
+            warnings.append(self._service_warning(ctx, lang))
         for w in ctx.withheld:
             warnings.append({"code": f"withheld_{w['category']}", "message": w["reason"]})
         flagged = [u.text_id for u in ctx.untrusted if u.flagged]
@@ -842,7 +843,7 @@ class EmployeeCopilotService:
         facts_out, refs_out = self._facts_out(ctx, all_ids, lang)
         composed = Composed([], opening, None)
         if sit.service_first:
-            warnings.append(self._service_warning(ctx))
+            warnings.append(self._service_warning(ctx, lang))
         for w in ctx.withheld:
             warnings.append({"code": f"withheld_{w['category']}", "message": w["reason"]})
         return {

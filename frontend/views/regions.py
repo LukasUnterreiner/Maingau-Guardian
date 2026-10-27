@@ -12,18 +12,25 @@ import streamlit as st
 
 import theme
 import ui
+from i18n import lang, tr
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
-# view: rate (state colour), amount (city bubble) and whether the amount is money
+# view: its name, rate (state colour), amount (city bubble) and whether the amount is money
 VIEWS = {
-    "Churn": ("Likely to cancel", lambda r: r["likely_to_cancel_share"] or 0, "Value at stake", "clv_at_stake_eur", True),
-    "Service": ("With a service issue", lambda r: r["service_issues"] / r["customers"], "Open service issues",
+    "Churn": (tr("Churn", "Kündigung"), tr("Likely to cancel", "Kündigungsgefährdet"),
+              lambda r: r["likely_to_cancel_share"] or 0, tr("Value at stake", "Gefährdeter Wert"), "clv_at_stake_eur",
+              True),
+    "Service": (tr("Service", "Service"), tr("With a service issue", "Mit Service-Anliegen"),
+                lambda r: r["service_issues"] / r["customers"], tr("Open service issues", "Offene Service-Anliegen"),
                 "service_issues", False),
-    "Opportunity": ("ΔCLV per customer", lambda r: r["expected_dclv_eur"] / r["customers"], "Expected ΔCLV",
+    "Opportunity": (tr("Opportunity", "Chance"), tr("ΔCLV per customer", "ΔCLV pro Kunde"),
+                    lambda r: r["expected_dclv_eur"] / r["customers"], tr("Expected ΔCLV", "Erwarteter ΔCLV"),
                     "expected_dclv_eur", True),
-    "Workload": ("Waiting for review", lambda r: r["pending_approvals"] / r["customers"], "Decisions to review",
+    "Workload": (tr("Workload", "Arbeit"), tr("Waiting for review", "Wartet auf Prüfung"),
+                 lambda r: r["pending_approvals"] / r["customers"], tr("Decisions to review", "Zu prüfende Entscheidungen"),
                  "pending_approvals", False),
 }
+CUSTOMERS = tr("customers", "Kunden")
 CROWDED = {"Offenbach", "Obertshausen"}  # 5 to 10 km from Frankfurt and Hanau: name on hover only
 LABEL_AT = {"Frankfurt": "top left", "Hanau": "top right", "Wiesbaden": "middle left", "Mainz": "bottom left",
             "Darmstadt": "bottom center"}
@@ -57,36 +64,39 @@ region = region if region in states else None
 city = st.query_params.get("city")
 city = city if city in cities and cities[city]["state_code"] == region else None
 
-ui.page_head("Regions", "Where customers and value are at risk",
-             f"{len(cities)} cities in {len(states)} states. Click a state on the map to look closer.")
+ui.page_head(tr("Regions", "Regionen"), tr("Where customers and value are at risk", "Wo Kunden und Werte gefährdet sind"),
+             tr(f"{len(cities)} cities in {len(states)} states. Click a state on the map to look closer.",
+                f"{len(cities)} Städte in {len(states)} Bundesländern. Ein Bundesland auf der Karte anklicken, um "
+                "genauer hinzusehen."))
 
 
 def go_to(new_region: str | None, new_city: str | None = None) -> None:
-    st.query_params.clear()
-    if new_region:
-        st.query_params["region"] = new_region
-    if new_city:
-        st.query_params["city"] = new_city
+    # only our own two parameters: ?lang= belongs to the language switch
+    for name, value in (("region", new_region), ("city", new_city)):
+        if value:
+            st.query_params[name] = value
+        elif name in st.query_params:
+            del st.query_params[name]
     st.rerun()
 
 
 with st.container(horizontal=True, vertical_alignment="center", gap="medium"):
-    view = st.segmented_control("View", list(VIEWS), default="Churn", key="region-view",
-                                label_visibility="collapsed") or "Churn"
+    view = st.segmented_control(tr("View", "Ansicht"), list(VIEWS), format_func=lambda k: VIEWS[k][0], default="Churn",
+                                key="region-view", label_visibility="collapsed") or "Churn"
     options = [None] + sorted(states, key=lambda k: names[k])
     picked = st.selectbox("Region", options, index=options.index(region), label_visibility="collapsed",
-                          format_func=lambda k: names[k] if k else "All of Germany", width=230)
+                          format_func=lambda k: names[k] if k else tr("All of Germany", "Ganz Deutschland"), width=230)
     if picked != region:
         go_to(picked)
-rate_label, rate, amount_label, amount_key, money = VIEWS[view]
+_, rate_label, rate, amount_label, amount_key, money = VIEWS[view]
 
 
 def show_amount(v: float) -> str:
-    return ui.eur(v, decimals=0) if money else f"{v:,.0f}"
+    return ui.eur(v, decimals=0) if money else ui.num(v)
 
 
 def show_rate(v: float) -> str:
-    return ui.eur(v, decimals=0) if view == "Opportunity" else f"{v * 100:.1f} %"
+    return ui.eur(v, decimals=0) if view == "Opportunity" else f"{ui.num(v * 100, 1)} %"
 
 
 def region_map() -> go.Figure:
@@ -97,7 +107,8 @@ def region_map() -> go.Figure:
     fig.add_trace(go.Choropleth(
         geojson=geo, featureidkey="properties.id", locations=grey, z=[0] * len(grey), showscale=False,
         colorscale=[[0, "#EDF1F7"], [1, "#EDF1F7"]], marker_line_color="#FFFFFF", marker_line_width=1,
-        text=[names[k] + ("<br>Click to look closer" if k in states else "<br>No customers in the data") for k in grey],
+        text=[names[k] + "<br>" + (tr("Click to look closer", "Anklicken, um genauer hinzusehen") if k in states
+                                   else tr("No customers in the data", "Keine Kunden in den Daten")) for k in grey],
         hovertemplate="%{text}<extra></extra>"))
     fig.add_trace(go.Choropleth(
         geojson=geo, featureidkey="properties.id", locations=coloured, z=[rate(states[k]) for k in coloured],
@@ -106,7 +117,7 @@ def region_map() -> go.Figure:
         marker_line_width=[3 if k == region else 1 for k in coloured],
         customdata=[[names[k], show_rate(rate(states[k])), states[k]["customers"]] for k in coloured],
         hovertemplate="<b>%{customdata[0]}</b><br>" + rate_label + ": %{customdata[1]}<br>"
-                      "%{customdata[2]} customers<extra></extra>",
+                      "%{customdata[2]} " + CUSTOMERS + "<extra></extra>",
         colorbar=dict(title=dict(text=rate_label, side="top"), orientation="h", x=0, xanchor="left", y=0,
                       yanchor="top", len=0.45, thickness=10, outlinewidth=0,
                       tickformat=",.0f" if view == "Opportunity" else ".0%"),
@@ -121,7 +132,7 @@ def region_map() -> go.Figure:
         textfont=dict(family="Plus Jakarta Sans, sans-serif", size=12, color=theme.COLORS["ink"]),
         customdata=[[n, show_amount(cities[n][amount_key]), cities[n]["customers"]] for n in places],
         hovertemplate="<b>%{customdata[0]}</b><br>" + amount_label + ": %{customdata[1]}<br>"
-                      "%{customdata[2]} customers<extra></extra>",
+                      "%{customdata[2]} " + CUSTOMERS + "<extra></extra>",
         marker=dict(size=[max(cities[n][amount_key], 0) for n in places], sizemode="area", sizemin=4,
                     sizeref=2 * largest / (24 if region else 26) ** 2, opacity=0.9,
                     color=["#FFE500" if region in (None, cities[n]["state_code"]) and city in (None, n) else "#FFF3A0"
@@ -136,7 +147,8 @@ def region_map() -> go.Figure:
         fig.update_geos(fitbounds="locations")
     fig.update_geos(visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)")
     fig.update_layout(**theme.plotly_layout(height=580, margin=dict(l=0, r=0, t=4, b=64)),
-                      clickmode="event+select", dragmode=False, showlegend=False)
+                      clickmode="event+select", dragmode=False, showlegend=False,
+                      separators=",." if lang() == "de" else ".,")
     return fig
 
 
@@ -159,19 +171,23 @@ with right:
     here = states[region] if region else total
     with st.container(horizontal=True, vertical_alignment="center"):
         ui.html_block(f'<div class="lt-section"><span class="lt-section__dot" style="background: var(--lt-primary);">'
-                      f'</span><h2 class="lt-section__title">{ui.esc(names[region] if region else "All of Germany")}'
-                      f'</h2><span class="lt-section__count">{here["customers"]:,} customers</span></div>')
+                      f'</span><h2 class="lt-section__title">'
+                      f'{ui.esc(names[region] if region else tr("All of Germany", "Ganz Deutschland"))}'
+                      f'</h2><span class="lt-section__count">{ui.num(here["customers"])} {CUSTOMERS}</span></div>')
         if region:
             st.space("stretch")
-            if st.button("All of Germany", icon=":material/zoom_out_map:", key="region-reset"):
+            if st.button(tr("All of Germany", "Ganz Deutschland"), icon=":material/zoom_out_map:", key="region-reset"):
                 go_to(None)
     share = here[amount_key] / total[amount_key] * 100 if total[amount_key] else 0
     ui.html_block(
         '<div class="lt-tiles lt-tiles--two">'
         + ui.tile("shield" if money else "inbox", ui.esc(amount_label), ui.esc(show_amount(here[amount_key])),
-                  f"{share:.0f} % of the total" if region else "all regions", "var(--lt-brand)")
+                  tr(f"{share:.0f} % of the total", f"{share:.0f} % der Summe") if region
+                  else tr("all regions", "alle Regionen"), "var(--lt-brand)")
         + ui.tile("users", ui.esc(rate_label), ui.esc(show_rate(rate(here))),
-                  f"all regions: {ui.esc(show_rate(rate(total)))}" if region else f"of {total['customers']:,} customers",
+                  tr(f"all regions: {ui.esc(show_rate(rate(total)))}", f"alle Regionen: {ui.esc(show_rate(rate(total)))}")
+                  if region else tr(f"of {ui.num(total['customers'])} customers",
+                                    f"von {ui.num(total['customers'])} Kunden"),
                   "var(--lt-resolve)")
         + '</div>')
     rows = ([(n, c) for n, c in cities.items() if c["state_code"] == region] if region
@@ -183,12 +199,14 @@ with right:
         f'<span class="lt-reglist__bar"><span style="width: {max(r[amount_key], 0) / longest * 100:.0f}%;"></span></span>'
         f'<span class="lt-reglist__value">{ui.esc(show_amount(r[amount_key]))}</span>'
         f'<span class="lt-reglist__note">{ui.esc(rate_label)}: {ui.esc(show_rate(rate(r)))} · '
-        f'{r["customers"]} customers{" · small group" if r["customers"] < 30 else ""}</span></div>'
+        f'{r["customers"]} {CUSTOMERS}{tr(" · small group", " · kleine Gruppe") if r["customers"] < 30 else ""}</span></div>'
         for n, r in rows)
+    by = tr("by city", "nach Stadt") if region else tr("by state", "nach Bundesland")
+    hint = tr("click a city bubble to see its customers", "eine Stadt-Blase anklicken, um ihre Kunden zu sehen") if region \
+        else tr("click a state on the map to look closer", "ein Bundesland auf der Karte anklicken, um genauer hinzusehen")
     ui.html_block(f'<section class="lt-softcard"><div class="lt-stack" style="gap: 0;"><h2 class="lt-section__title" '
-                  f'style="font-size: 18px;">{ui.esc(amount_label)} by {"city" if region else "state"}</h2>'
-                  f'<span class="lt-caption">{"click a city bubble to see its customers" if region else "click a state on the map to look closer"}'
-                  f'</span></div><div class="lt-reglist">{items}</div></section>')
+                  f'style="font-size: 18px;">{ui.esc(amount_label)} {by}</h2>'
+                  f'<span class="lt-caption">{hint}</span></div><div class="lt-reglist">{items}</div></section>')
 
 if region:
     index = ui.load(ui.customer_index)
@@ -198,11 +216,12 @@ if region:
     risky = sorted((c for c in inside if (c.get("churn_probability") or 0) >= levels["high"]),
                    key=lambda c: -(c.get("current_clv_eur") or 0))
     where = city or names[region]
-    if ui.section(f"Likely to cancel in {where}", len(risky), "var(--lt-resolve)", "region-risk",
-                  f"All of {names[region]}" if city else None):
+    if ui.section(tr(f"Likely to cancel in {where}", f"Kündigungsgefährdet in {where}"), len(risky), "var(--lt-resolve)",
+                  "region-risk", tr(f"All of {names[region]}", f"Ganz {names[region]}") if city else None):
         go_to(region)
     if not risky:
-        st.info(f"No customer in {where} is in the top quarter by churn risk.")
+        st.info(tr(f"No customer in {where} is in the top quarter by churn risk.",
+                   f"Kein Kunde in {where} gehört zum obersten Viertel nach Kündigungsrisiko."))
     cols = st.columns(3, gap="medium")
     for i, c in enumerate(risky[:3]):
         with cols[i]:
@@ -210,21 +229,29 @@ if region:
 
 table_rows = ([c for n, c in cities.items() if c["state_code"] == region] if region
               else [s | {"name": names[k]} for k, s in states.items()])
+SHARE, AT_STAKE, DCLV = tr("Share likely to cancel", "Anteil kündigungsgefährdet"), \
+    tr("Value at stake (€)", "Gefährdeter Wert (€)"), tr("Expected ΔCLV (€)", "Erwarteter ΔCLV (€)")
 table = pd.DataFrame([{
-    "Region": r["name"], "Customers": r["customers"], "Likely to cancel": r["likely_to_cancel"],
-    "Share likely to cancel": (r["likely_to_cancel_share"] or 0) * 100, "Value at stake (€)": r["clv_at_stake_eur"],
-    "Open service issues": r["service_issues"], "Waiting for review": r["pending_approvals"],
-    "Expected ΔCLV (€)": r["expected_dclv_eur"],
+    "Region": r["name"], tr("Customers", "Kunden"): r["customers"],
+    tr("Likely to cancel", "Kündigungsgefährdet"): r["likely_to_cancel"], SHARE: (r["likely_to_cancel_share"] or 0) * 100,
+    AT_STAKE: r["clv_at_stake_eur"], tr("Open service issues", "Offene Service-Anliegen"): r["service_issues"],
+    tr("Waiting for review", "Wartet auf Prüfung"): r["pending_approvals"], DCLV: r["expected_dclv_eur"],
 } for r in sorted(table_rows, key=lambda r: -r["customers"])])
-with st.expander(f"All numbers by {'city' if region else 'state'}", icon=":material/table:"):
+with st.expander(tr("All numbers ", "Alle Zahlen ") + by, icon=":material/table:"):
     st.dataframe(table, hide_index=True, width="stretch", column_config={
-        "Share likely to cancel": st.column_config.NumberColumn(format="%.1f %%"),
-        "Value at stake (€)": st.column_config.NumberColumn(format="euro"),
-        "Expected ΔCLV (€)": st.column_config.NumberColumn(format="euro"),
+        SHARE: st.column_config.NumberColumn(format="%.1f %%"),
+        AT_STAKE: st.column_config.NumberColumn(format="euro"),
+        DCLV: st.column_config.NumberColumn(format="euro"),
     })
 unassigned = by_level["state"]["unassigned_customers"]
-st.caption(f"Likely to cancel = the top quarter of all customers by churn risk (≥ {ui.pct(by_level['state']['high_risk_threshold'])}). "
-           + (f"{unassigned} customers have a city that is not on the map. " if unassigned else "")
-           + "Regions are for reporting only; Lighty never uses them for a recommendation. The data is synthetic and "
-             "groups have about 50 customers, so differences of a few percentage points are not meaningful. "
-             "Outlines: Natural Earth.")
+threshold = ui.pct(by_level["state"]["high_risk_threshold"])
+st.caption(tr(f"Likely to cancel = the top quarter of all customers by churn risk (≥ {threshold}). "
+              + (f"{unassigned} customers have a city that is not on the map. " if unassigned else "")
+              + "Regions are for reporting only; Lighty never uses them for a recommendation. The data is synthetic and "
+                "groups have about 50 customers, so differences of a few percentage points are not meaningful. "
+                "Outlines: Natural Earth.",
+              f"Kündigungsgefährdet = das oberste Viertel aller Kunden nach Kündigungsrisiko (≥ {threshold}). "
+              + (f"{unassigned} Kunden haben eine Stadt, die nicht auf der Karte ist. " if unassigned else "")
+              + "Regionen dienen nur der Auswertung; Lighty nutzt sie nie für eine Empfehlung. Die Daten sind synthetisch "
+                "und die Gruppen haben etwa 50 Kunden, daher sind Unterschiede von wenigen Prozentpunkten nicht "
+                "aussagekräftig. Umrisse: Natural Earth."))

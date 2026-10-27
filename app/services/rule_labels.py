@@ -35,6 +35,7 @@ NAMES: dict[str, tuple[str, str]] = {
     "newsletter_email": ("Newsletter-E-Mail", "newsletter e-mail"),
     "portal_popup": ("Portal-Pop-up", "portal pop-up"),
     "app_push": ("App-Push", "app push"),
+    "sms": ("SMS", "SMS"),
     "outbound_call": ("Anruf", "outbound call"),
     "service_email": ("Service-E-Mail", "service e-mail"),
     "service_call": ("Service-Anruf", "service call"),

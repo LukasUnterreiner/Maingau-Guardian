@@ -14,7 +14,6 @@ API_URL = os.environ.get("LIGHTY_API_URL", "http://localhost:8000").rstrip("/")
 ADMIN_TOKEN = os.environ.get("LIGHTY_ADMIN_TOKEN", "")   # only needed when the backend sets ADMIN_TOKEN
 TIMEOUT_S = 15
 CHAT_TIMEOUT_S = 35        # a little above the backend's AI_TIMEOUT_S (20 s), see API_CONTRACT.md §5.1
-LANGUAGE = "en"            # language of Lighty's chat answers, same as the web app; the customer wording stays German
 
 # The four decision groups of the Lighty design, keyed by the backend's action_type.
 DECISION_GROUP = {"sales": "Offer", "upsell": "Offer", "one_off": "Offer", "service": "Resolve an issue",
@@ -93,13 +92,14 @@ def customer(token: str, customer_id: str) -> dict:
     return _request("GET", f"/api/customers/{customer_id}", token)
 
 
-def recommendation(token: str, customer_id: str) -> dict:
-    return _request("GET", f"/api/customers/{customer_id}/recommendations", token)
+def recommendation(token: str, customer_id: str, language: str = "en") -> dict:
+    """language "de" gives the reason in German; everything else is the same."""
+    return _request("GET", f"/api/customers/{customer_id}/recommendations", token, params={"language": language})
 
 
-def suggested_questions(token: str, customer_id: str) -> list[dict]:
+def suggested_questions(token: str, customer_id: str, language: str = "en") -> list[dict]:
     return _request("GET", "/api/copilot/suggested-questions", token,
-                    params={"customer_id": customer_id, "language": LANGUAGE}).get("questions", [])
+                    params={"customer_id": customer_id, "language": language}).get("questions", [])
 
 
 def review(token: str, decision_id: str, approve: bool, reviewer: str, note: str | None = None) -> dict:
@@ -109,8 +109,9 @@ def review(token: str, decision_id: str, approve: bool, reviewer: str, note: str
                     json={"reviewer": reviewer, "note": note})
 
 
-def chat(token: str, customer_id: str, message: str, conversation_id: str | None = None) -> dict:
-    body = {"customer_id": customer_id, "message": message, "language": LANGUAGE}
+def chat(token: str, customer_id: str, message: str, conversation_id: str | None = None, language: str = "en") -> dict:
+    """Lighty answers in the app language (en or de); the wording for the customer is always German."""
+    body = {"customer_id": customer_id, "message": message, "language": language}
     if conversation_id:
         body["conversation_id"] = conversation_id
     return _request("POST", "/api/copilot/chat", token, json=body, timeout=CHAT_TIMEOUT_S)

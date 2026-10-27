@@ -3,6 +3,7 @@ import streamlit as st
 
 import lighty_api as api
 import ui
+from i18n import lang, tr
 
 index = ui.load(ui.customer_index)
 by_id = {c["customer_id"]: c for c in index}
@@ -14,26 +15,27 @@ if current not in by_id:
 
 def label(cid: str) -> str:
     c = by_id[cid]
-    flag = " · open complaint" if c.get("open_complaint") else " · service issue" if c.get("has_service_issue") else ""
-    return f"{cid} · {c.get('city') or 'unknown city'}{flag}"
+    flag = tr(" · open complaint", " · offene Beschwerde") if c.get("open_complaint") else \
+        tr(" · service issue", " · Service-Anliegen") if c.get("has_service_issue") else ""
+    return f"{cid} · {c.get('city') or tr('unknown city', 'Stadt unbekannt')}{flag}"
 
 
 head, pick = st.columns([3, 2], vertical_alignment="bottom")
-cid = pick.selectbox("Customer", ids, index=ids.index(current), format_func=label, key="customer-picker")
+cid = pick.selectbox(tr("Customer", "Kunde"), ids, index=ids.index(current), format_func=label, key="customer-picker")
 st.session_state["customer_id"] = cid
 c = by_id[cid]
 with head:
-    ui.page_head("Customers", cid)
+    ui.page_head(tr("Customers", "Kunden"), cid)
 
 tone = c.get("tonality") or "sie"
 facts = [f'<span class="lt-tone{" lt-tone--du" if tone == "du" else ""}"><span class="lt-tone__value">'
-         f'{ui.esc(tone.capitalize())}</span><span class="lt-tone__source">form of address</span></span>']
+         f'{ui.esc(ui.tone(tone))}</span><span class="lt-tone__source">{tr("form of address", "Anrede")}</span></span>']
 if c.get("open_complaint"):
-    facts.append('<span class="lt-pill lt-pill--issue">Open complaint</span>')
+    facts.append(f'<span class="lt-pill lt-pill--issue">{tr("Open complaint", "Offene Beschwerde")}</span>')
 elif c.get("has_service_issue"):
-    facts.append('<span class="lt-pill lt-pill--issue">Service issue</span>')
-facts.append(f'<span class="lt-small">{ui.esc(c.get("city"))} · {ui.esc(", ".join(c.get("business_lines") or []))} · '
-             f'customer since {ui.esc((c.get("customer_since") or "")[:4])}</span>')
+    facts.append(f'<span class="lt-pill lt-pill--issue">{tr("Service issue", "Service-Anliegen")}</span>')
+facts.append(f'<span class="lt-small">{ui.esc(c.get("city"))} · {ui.esc(ui.business_lines(c.get("business_lines")))} · '
+             f'{tr("customer since", "Kunde seit")} {ui.esc((c.get("customer_since") or "")[:4])}</span>')
 ui.html_block(f'<div class="lt-row" style="gap: 8px; padding-bottom: 30px;">{"".join(facts)}</div>')
 
 rec = ui.load(ui.recommendation, cid)
@@ -57,25 +59,28 @@ def take_suggestion(key: str) -> None:
 def ask(question: str) -> None:
     try:
         try:
-            resp = api.chat(st.session_state["token"], cid, question, chat["conversation_id"])
+            resp = api.chat(st.session_state["token"], cid, question, chat["conversation_id"], lang())
         except api.LightyError as exc:
             if exc.status != 409 or not chat["conversation_id"]:
                 raise
             chat["conversation_id"] = None   # other customer or turn limit: start a new conversation
-            resp = api.chat(st.session_state["token"], cid, question)
+            resp = api.chat(st.session_state["token"], cid, question, language=lang())
     except api.LightyError as exc:
-        st.session_state["chat-error"] = exc.message
+        st.session_state["chat-error"] = ui.error_text(exc)
         return
     chat["conversation_id"] = resp.get("conversation_id")
     chat["turns"].append((question, resp))
 
 
 with right, st.container(key="ask-lighty"):
-    st.html('<div class="lt-row" style="gap: 8px;"><h2 class="lt-h3">Ask Lighty</h2><span class="lt-spacer"></span>'
-            '<span class="lt-caption">internal only · never contacts the customer</span></div>')
+    st.html(f'<div class="lt-row" style="gap: 8px;"><h2 class="lt-h3">{tr("Ask Lighty", "Lighty fragen")}</h2>'
+            '<span class="lt-spacer"></span><span class="lt-caption">'
+            f'{tr("internal only · never contacts the customer", "nur intern · kontaktiert nie den Kunden")}</span></div>')
     if not chat["turns"]:
-        st.html('<p class="lt-body">Ask anything about this customer. Lighty answers from the data, '
-                'says what is missing, and never changes the decision above.</p>')
+        st.html('<p class="lt-body">' + tr("Ask anything about this customer. Lighty answers from the data, says what is "
+                                           "missing, and never changes the decision above.",
+                                           "Alles zu diesem Kunden fragen. Lighty antwortet aus den Daten, sagt, was "
+                                           "fehlt, und ändert nie die Entscheidung oben.") + '</p>')
     elif banner := ui.sales_banner(chat["turns"][-1][1]):
         ui.html_block(banner)
     for n, (question, resp) in enumerate(chat["turns"]):
@@ -87,12 +92,12 @@ with right, st.container(key="ask-lighty"):
 
     questions = [q["question"] for q in ui.load(ui.suggested_questions, cid)]
     pills_key = f"pills-{cid}"
-    st.pills("Suggested questions", questions, key=pills_key, label_visibility="collapsed",
+    st.pills(tr("Suggested questions", "Vorgeschlagene Fragen"), questions, key=pills_key, label_visibility="collapsed",
              on_change=take_suggestion, args=(pills_key,))
-    typed = st.chat_input("Ask about this customer…", key=f"chat-{cid}", max_chars=2000)
+    typed = st.chat_input(tr("Ask about this customer…", "Frage zu diesem Kunden…"), key=f"chat-{cid}", max_chars=2000)
     question = typed or st.session_state.pop("ask", None)
     if question:
         ui.html_block(ui.user_message(question))
-        with st.spinner("Lighty is writing…"):
+        with st.spinner(tr("Lighty is writing…", "Lighty schreibt…")):
             ask(question)
         st.rerun()
